@@ -7,3 +7,6 @@ edition = "2021"
 
 [dependencies]
 actix-web = "4.3.1"
+env_logger = "0.10.0"
+structopt = "0.3.26"
+structopt-derive = "0.4.18"
