@@ -1,38 +1,50 @@
 version: "3"
 
 networks:
-  web:
+  app:
     driver: bridge
 
 services:
+  migrations:
+    container_name: migrations
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile_migrations
+    command: sleep 86400
+    tty: true
+    volumes:
+      - ./migrations/:/app/migrations
+    networks:
+      - app
+
   scylla-node1:
     container_name: scylla-node1
     image: scylladb/scylla:5.2.4
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
     ports:
       - "9042:9042"
     volumes:
       - ./data/scylla1:/var/lib/scylla
     networks:
-      web:
+      - app
 
   scylla-node2:
     container_name: scylla-node2
     image: scylladb/scylla:5.2.4
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
     volumes:
       - ./data/scylla2:/var/lib/scylla
     networks:
-      web:
+      - app
 
   scylla-node3:
     container_name: scylla-node3
     image: scylladb/scylla:5.2.4
     restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 750M --overprovisioned 1 --api-address 0.0.0.0
+    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
     volumes:
       - ./data/scylla3:/var/lib/scylla
     networks:
-      web:
+      - app
