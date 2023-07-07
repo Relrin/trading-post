@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     created_at timestamp,
     expired_at timestamp,
     PRIMARY KEY (id, item_id)
-) WITH caching = {'enabled': 'true'} AND compression = {'sstable_compression': 'LZ4Compressor'};
+);

@@ -1,8 +1,4 @@
-version: "3"
-
-networks:
-  app:
-    driver: bridge
+version: '3'
 
 services:
   migrations:
@@ -14,37 +10,33 @@ services:
     tty: true
     volumes:
       - ./migrations/:/app/migrations
-    networks:
-      - app
 
-  scylla-node1:
-    container_name: scylla-node1
-    image: scylladb/scylla:5.2.4
-    restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
+  cassandra-node1:
+    image: bitnami/cassandra:4.0.10
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cassandra-cluster
+      - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2
+      - CASSANDRA_PASSWORD_SEEDER=yes
+      - CASSANDRA_PASSWORD=cassandra
+    volumes:
+      - ./data/node1:/bitnami
     ports:
       - "9042:9042"
-    volumes:
-      - ./data/scylla1:/var/lib/scylla
-    networks:
-      - app
 
-  scylla-node2:
-    container_name: scylla-node2
-    image: scylladb/scylla:5.2.4
-    restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
+  cassandra-node2:
+    image: bitnami/cassandra:4.0.10
     volumes:
-      - ./data/scylla2:/var/lib/scylla
-    networks:
-      - app
+      - ./data/node2:/bitnami
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cassandra-cluster
+      - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2
+      - CASSANDRA_PASSWORD=cassandra
 
-  scylla-node3:
-    container_name: scylla-node3
-    image: scylladb/scylla:5.2.4
-    restart: always
-    command: --seeds=scylla-node1,scylla-node2 --smp 1 --memory 1500M --overprovisioned 1 --listen-address 0.0.0.0
+  cassandra-node3:
+    image: bitnami/cassandra:4.0.10
+    environment:
+      - CASSANDRA_CLUSTER_NAME=cassandra-cluster
+      - CASSANDRA_SEEDS=cassandra-node1,cassandra-node2
+      - CASSANDRA_PASSWORD=cassandra
     volumes:
-      - ./data/scylla3:/var/lib/scylla
-    networks:
-      - app
+      - ./data/node3:/bitnami

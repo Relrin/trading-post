@@ -1,7 +1,7 @@
-keyspace: herbie
+keyspace: trading_post
 profiles:
   dev:
     replication:
       class: NetworkTopologyStrategy
       replication_factor: 3
-migrations_path: ./migrations
+migrations_path: .
