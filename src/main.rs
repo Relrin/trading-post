@@ -1,5 +1,6 @@
 mod api;
 mod cli;
+mod core;
 
 use actix_web::{App, web, HttpServer, middleware};
 use structopt::StructOpt;

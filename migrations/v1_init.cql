@@ -11,5 +11,6 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     created_by_username text,
     created_at timestamp,
     expired_at timestamp,
+    is_deleted boolean,
     PRIMARY KEY (id, item_id)
 );
