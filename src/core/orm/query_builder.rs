@@ -1,6 +1,5 @@
-
 // TODO: Add filters support
-// TODO: Add Query type (that hold CQL, page size, page number) + execute pub method
+// TODO: Add Query type (that holds CQL, page size, page number) + execute pub method
 
 #[derive(Debug)]
 pub struct QueryBuilder<'a> {
@@ -47,7 +46,14 @@ impl<'a> QueryBuilder<'a> {
     }
 
     fn build_insert_query(&self) -> String {
-        "".to_owned()
+        let mut query = Vec::<String>::new();
+        query.push(QueryType::Insert.to_string());
+        query.push(self.table.to_owned());
+        query.push( format!("({})", self.columns.join(", ")));
+        query.push("VALUES".to_owned());
+        query.push( format!("({})", self.columns.iter().map(|_| "?").collect::<Vec<_>>().join(", ")));
+
+        query.join(" ")
     }
 
     fn build_update_query(&self) -> String {
@@ -87,6 +93,11 @@ mod tests {
 
     #[test]
     fn test_insert_query() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .query_type(QueryType::Insert)
+            .columns(&["key", "value"])
+            .build();
 
+        assert_eq!(query, "INSERT INTO trading_post.trade (key, value) VALUES (?, ?)");
     }
 }
