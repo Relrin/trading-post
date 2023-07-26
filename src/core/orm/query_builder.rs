@@ -1,5 +1,5 @@
 // TODO: Add filters support
-// TODO: Add Query type (that holds CQL, page size, page number) + execute pub method
+use crate::core::orm::query::Query;
 
 #[derive(Debug)]
 pub struct QueryBuilder<'a> {
@@ -27,12 +27,14 @@ impl<'a> QueryBuilder<'a> {
         self
     }
 
-    pub fn build(&self) -> String {
-        match self.query_type {
+    pub fn build(&self) -> Query {
+        let raw_cql = match self.query_type {
             QueryType::Select => self.build_select_query(),
             QueryType::Insert => self.build_insert_query(),
             QueryType::Update => self.build_update_query(),
-        }
+        };
+
+        Query::new(&raw_cql)
     }
 
     fn build_select_query(&self) -> String {
@@ -95,30 +97,30 @@ mod tests {
     use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 
     #[test]
-    fn test_select_query() {
+    fn test_build_select_query() {
         let query = QueryBuilder::new("trading_post.trade")
             .columns(&["id", "item_id", "item_name"])
-            .build();
+            .build_select_query();
 
         assert_eq!(query, "SELECT id, item_id, item_name FROM trading_post.trade");
     }
 
     #[test]
-    fn test_insert_query() {
+    fn test_build_insert_query() {
         let query = QueryBuilder::new("trading_post.trade")
             .query_type(QueryType::Insert)
             .columns(&["key", "value"])
-            .build();
+            .build_insert_query();
 
         assert_eq!(query, "INSERT INTO trading_post.trade (key, value) VALUES (?, ?)");
     }
 
     #[test]
-    fn test_update_query() {
+    fn test_build_update_query() {
         let query = QueryBuilder::new("trading_post.trade")
             .query_type(QueryType::Update)
             .columns(&["key", "value"])
-            .build();
+            .build_update_query();
 
         assert_eq!(query, "UPDATE trading_post.trade SET key = ?, value = ?");
     }
