@@ -57,7 +57,19 @@ impl<'a> QueryBuilder<'a> {
     }
 
     fn build_update_query(&self) -> String {
-        "".to_owned()
+        let mut query = Vec::<String>::new();
+        query.push(QueryType::Update.to_string());
+        query.push(self.table.to_owned());
+        query.push("SET".to_owned());
+        query.push(
+            self.columns
+                .iter()
+                .map(|field_name| format!("{} = ?", field_name))
+                .collect::<Vec<String>>()
+                .join(", ")
+        );
+
+        query.join(" ")
     }
 }
 
@@ -99,5 +111,15 @@ mod tests {
             .build();
 
         assert_eq!(query, "INSERT INTO trading_post.trade (key, value) VALUES (?, ?)");
+    }
+
+    #[test]
+    fn test_update_query() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .query_type(QueryType::Update)
+            .columns(&["key", "value"])
+            .build();
+
+        assert_eq!(query, "UPDATE trading_post.trade SET key = ?, value = ?");
     }
 }
