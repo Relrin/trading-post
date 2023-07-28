@@ -1,19 +1,21 @@
-// TODO: Add filters support
+use crate::core::orm::filter::Filter;
 use crate::core::orm::query::Query;
 
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct QueryBuilder<'a> {
     query_type: QueryType,
     table: &'a str,
     columns: &'a [&'a str],
+    filters: Vec<Filter<'a>>,
 }
 
 impl<'a> QueryBuilder<'a> {
     pub fn new(table: &'a str) -> Self {
-        QueryBuilder {
+        Self {
             query_type: QueryType::Select,
             table,
             columns: &[],
+            filters: vec![],
         }
     }
 
@@ -24,6 +26,11 @@ impl<'a> QueryBuilder<'a> {
 
     pub fn columns(mut self, columns: &'a [&'a str]) -> Self {
         self.columns = columns;
+        self
+    }
+
+    pub fn filter_by(mut self, filter: Filter<'a>) -> Self {
+        self.filters.push(filter);
         self
     }
 
@@ -44,6 +51,10 @@ impl<'a> QueryBuilder<'a> {
         query.push("FROM".to_owned());
         query.push(self.table.to_owned());
 
+        if self.filters.len() > 0 {
+            query.push(self.build_where_clause());
+        }
+
         query.join(" ")
     }
 
@@ -51,9 +62,16 @@ impl<'a> QueryBuilder<'a> {
         let mut query = Vec::<String>::new();
         query.push(QueryType::Insert.to_string());
         query.push(self.table.to_owned());
-        query.push( format!("({})", self.columns.join(", ")));
+        query.push(format!("({})", self.columns.join(", ")));
         query.push("VALUES".to_owned());
-        query.push( format!("({})", self.columns.iter().map(|_| "?").collect::<Vec<_>>().join(", ")));
+        query.push(format!(
+            "({})",
+            self.columns
+                .iter()
+                .map(|_| "?")
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
 
         query.join(" ")
     }
@@ -68,14 +86,28 @@ impl<'a> QueryBuilder<'a> {
                 .iter()
                 .map(|field_name| format!("{} = ?", field_name))
                 .collect::<Vec<String>>()
-                .join(", ")
+                .join(", "),
         );
+
+        if self.filters.len() > 0 {
+            query.push(self.build_where_clause());
+        }
 
         query.join(" ")
     }
+
+    fn build_where_clause(&self) -> String {
+        let conditions = self.filters
+            .iter()
+            .map(|filter| format!("{} {} ?", filter.get_field_name(), filter.get_operator().to_string()))
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        return format!("WHERE {}", conditions)
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum QueryType {
     Select,
     Insert,
@@ -87,13 +119,14 @@ impl QueryType {
         match self {
             QueryType::Select => String::from("SELECT"),
             QueryType::Insert => String::from("INSERT INTO"),
-            QueryType::Update => String::from("UPDATE")
+            QueryType::Update => String::from("UPDATE"),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::core::orm::filter::{Filter, Operator};
     use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 
     #[test]
@@ -102,7 +135,23 @@ mod tests {
             .columns(&["id", "item_id", "item_name"])
             .build_select_query();
 
-        assert_eq!(query, "SELECT id, item_id, item_name FROM trading_post.trade");
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade"
+        );
+    }
+
+    #[test]
+    fn test_build_select_query_with_filter() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .filter_by(Filter::new("id", Operator::Eq))
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ?"
+        );
     }
 
     #[test]
@@ -112,7 +161,10 @@ mod tests {
             .columns(&["key", "value"])
             .build_insert_query();
 
-        assert_eq!(query, "INSERT INTO trading_post.trade (key, value) VALUES (?, ?)");
+        assert_eq!(
+            query,
+            "INSERT INTO trading_post.trade (key, value) VALUES (?, ?)"
+        );
     }
 
     #[test]
@@ -123,5 +175,16 @@ mod tests {
             .build_update_query();
 
         assert_eq!(query, "UPDATE trading_post.trade SET key = ?, value = ?");
+    }
+
+    #[test]
+    fn test_build_update_query_with_filters() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .query_type(QueryType::Update)
+            .columns(&["key", "value"])
+            .filter_by(Filter::new("key", Operator::Eq))
+            .build_update_query();
+
+        assert_eq!(query, "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ?");
     }
 }
