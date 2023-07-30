@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     buyout_price bigint,
     created_by uuid,
     created_by_username text,
-    created_at timestamp,
+    bought_by uuid,
+    bought_by_username text,
     expired_at timestamp,
     is_deleted boolean,
     PRIMARY KEY (id, item_id)

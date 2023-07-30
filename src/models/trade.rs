@@ -1,37 +1,44 @@
-use chrono::{DateTime, Days, Utc};
-use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Days, Utc, Duration};
+use go_parse_duration::{parse_duration};
+use serde::{Serialize, Deserialize, Deserializer};
+use serde::de::Error;
 use validator::{Validate, ValidationError};
 use uuid::{Uuid};
 
-#[derive(Serialize, Deserialize, Debug, Validate)]
-#[validate(schema(function = "validate_trade", skip_on_field_errors = false))]
+#[derive(Serialize, Debug)]
 pub struct Trade {
-    #[serde(default = "init_id")]
     id: Uuid,
     item_id: Uuid,
-    #[validate(length(min = 1))]
     item_name: String,
-    #[validate(range(min = 0))]
     bid_price: i64,
-    #[validate(range(min = 0))]
     buyout_price: i64,
     created_by: Uuid,
-    #[validate(length(min = 1))]
     created_by_username: String,
-    #[serde(skip_deserializing, default="init_created_at")]
     created_at: DateTime<Utc>,
-    #[serde(skip_deserializing, default="init_expired_at")]
+    buyer_by: Uuid,
+    buyer_username: String,
     expired_at: DateTime<Utc>,
     #[serde(skip)]
     is_deleted: bool,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct TradeOperation {
-    price: i64,
+#[derive(Deserialize, Debug, Validate)]
+#[validate(schema(function = "validate_create_trade", skip_on_field_errors = false))]
+pub struct CreateTrade {
+    item_id: Uuid,
+    #[validate(length(min = 1))]
+    item_name: String,
+    #[validate(range(min = 0))]
+    bid_price: i64,
+    buyout_price: Option<i64>,
+    created_by: Uuid,
+    #[validate(length(min = 1))]
+    created_by_username: String,
+    #[serde(deserialize_with = "parse_expire_in")]
+    expire_in: Option<Duration>,
 }
 
-fn validate_trade(instance: &Trade) -> Result<(), ValidationError> {
+fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
     if let Some(buyout_price) = instance.buyout_price {
         if buyout_price > 0 && instance.bid_price > buyout_price {
             return Err(ValidationError::new("The bid can't be greater a buyout price"))
@@ -41,15 +48,44 @@ fn validate_trade(instance: &Trade) -> Result<(), ValidationError> {
     Ok(())
 }
 
-fn init_id() -> Uuid {
-    Uuid::new_v4()
+fn parse_expire_in<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let input = String::deserialize(deserializer)?;
+    match parse_duration(&input) {
+        Ok(duration_ns) => Ok(Some(Duration::nanoseconds(duration_ns))),
+        Err(_) => Err(Error::custom("Duration format is invalid")),
+    }
 }
 
-fn init_created_at() -> DateTime<Utc> {
-    Utc::now()
-}
+impl From<CreateTrade> for Trade {
+    fn from(instance: CreateTrade) -> Self {
+        let buyout_price = match instance.buyout_price {
+            Some(value) => value,
+            None => 0,
+        };
 
-// Set a date before the created_at date to indicate that expiration wasn't set
-fn init_expired_at() -> DateTime<Utc> {
-    Utc::now() - Days::new(1)
+        let created_at = Utc::now();
+        let expired_at = match instance.expire_in {
+            Some(duration) => Utc::now() + duration,
+            // Set a date before the created_at date to indicate that expiration wasn't set
+            None => created_at - Days::new(1),
+        };
+
+        Trade {
+            id:  Uuid::new_v4(),
+            item_id: instance.item_id,
+            item_name: instance.item_name,
+            bid_price: instance.bid_price,
+            buyout_price,
+            created_by: instance.created_by,
+            created_by_username: instance.created_by_username.clone(),
+            created_at,
+            buyer_by: instance.created_by,
+            buyer_username: instance.created_by_username,
+            expired_at,
+            is_deleted: false,
+        }
+    }
 }
