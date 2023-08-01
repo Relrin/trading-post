@@ -2,8 +2,13 @@ use chrono::{DateTime, Days, Utc, Duration};
 use go_parse_duration::{parse_duration};
 use serde::{Serialize, Deserialize, Deserializer};
 use serde::de::Error;
+use lazy_static::lazy_static;
 use validator::{Validate, ValidationError};
 use uuid::{Uuid};
+
+lazy_static! {
+    static ref EMPTY_UUID: Uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+}
 
 #[derive(Serialize, Debug)]
 pub struct Trade {
@@ -36,6 +41,12 @@ pub struct CreateTrade {
     created_by_username: String,
     #[serde(deserialize_with = "parse_expire_in")]
     expire_in: Option<Duration>,
+}
+
+#[derive(Deserialize, Debug, Validate)]
+pub struct TradeOperation {
+    #[validate(range(min = 1))]
+    price: i64,
 }
 
 fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
@@ -82,8 +93,8 @@ impl From<CreateTrade> for Trade {
             created_by: instance.created_by,
             created_by_username: instance.created_by_username.clone(),
             created_at,
-            buyer_by: instance.created_by,
-            buyer_username: instance.created_by_username,
+            buyer_by: *EMPTY_UUID,
+            buyer_username: String::new(),
             expired_at,
             is_deleted: false,
         }

@@ -6,6 +6,7 @@ mod models;
 use actix_web::{App, web, HttpServer, middleware};
 use structopt::StructOpt;
 
+use crate::api::auction::get_auction_router;
 use crate::api::k8s::get_k8s_router;
 use crate::cli::CliOptions;
 
@@ -20,6 +21,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(middleware::Logger::default().log_target("http_log"))
             .app_data(web::JsonConfig::default().limit(MAX_JSON_SIZE))
+            .service(get_auction_router())
             .service(get_k8s_router())
     })
     .bind((cli.host, cli.port))?
