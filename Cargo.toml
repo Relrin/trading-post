@@ -11,6 +11,7 @@ actix-web-validator = "5.0.1"
 cdrs-tokio = "8.1.1"
 chrono = { version = "0.4.26", features = ["default", "serde"] }
 env_logger = "0.10.0"
+derive_more = "0.99.17"
 go-parse-duration = "0.1.1"
 lazy_static = "1.4.0"
 serde = { version = "1", features = ["derive"] }

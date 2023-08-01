@@ -1,7 +1,8 @@
 use actix_web::{post, HttpResponse, Scope};
-use actix_web::web::scope;
-use actix_web_validator::{Json};
+use actix_web::web::{Json, scope};
+use validator::Validate;
 
+use crate::core::error::Error;
 use crate::models::trade::CreateTrade;
 
 pub fn get_auction_router() -> Scope {
@@ -10,6 +11,9 @@ pub fn get_auction_router() -> Scope {
 }
 
 #[post("/create")]
-async fn create_trade(data: Json<CreateTrade>) -> HttpResponse {
-    HttpResponse::Ok().body("OK")
+async fn create_trade(data: Json<CreateTrade>) -> Result<HttpResponse, Error> {
+    data.validate()
+        .map_err(|err| Error::ValidationError { message: String::from("Validation error"), errors: err })?;
+
+    Ok(HttpResponse::Ok().finish())
 }

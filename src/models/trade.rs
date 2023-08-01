@@ -1,8 +1,8 @@
 use chrono::{DateTime, Days, Utc, Duration};
 use go_parse_duration::{parse_duration};
+use lazy_static::lazy_static;
 use serde::{Serialize, Deserialize, Deserializer};
 use serde::de::Error;
-use lazy_static::lazy_static;
 use validator::{Validate, ValidationError};
 use uuid::{Uuid};
 
@@ -27,7 +27,7 @@ pub struct Trade {
     is_deleted: bool,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Debug, PartialEq, Deserialize, Validate)]
 #[validate(schema(function = "validate_create_trade", skip_on_field_errors = false))]
 pub struct CreateTrade {
     item_id: Uuid,
