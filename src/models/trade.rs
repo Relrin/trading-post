@@ -52,7 +52,7 @@ pub struct TradeOperation {
 fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
     if let Some(buyout_price) = instance.buyout_price {
         if buyout_price > 0 && instance.bid_price > buyout_price {
-            return Err(ValidationError::new("The bid can't be greater a buyout price"))
+            return Err(ValidationError::new("The bid can't be greater than the buyout price"))
         }
     }
 

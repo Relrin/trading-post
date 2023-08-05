@@ -12,8 +12,7 @@ pub fn get_auction_router() -> Scope {
 
 #[post("/create")]
 async fn create_trade(data: Json<CreateTrade>) -> Result<HttpResponse, Error> {
-    data.validate()
-        .map_err(|err| Error::ValidationError { message: String::from("Validation error"), errors: err })?;
+    data.validate()?;
 
     Ok(HttpResponse::Ok().finish())
 }
