@@ -14,5 +14,8 @@ pub fn get_auction_router() -> Scope {
 async fn create_trade(data: Json<CreateTrade>) -> Result<HttpResponse, Error> {
     data.validate()?;
 
+    // insert query
+    // read data back and give it back
+    
     Ok(HttpResponse::Ok().finish())
 }
