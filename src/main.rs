@@ -18,7 +18,7 @@ async fn main() -> std::io::Result<()> {
     let opts = CliOptions::from_args();
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let cassandra_session = CassandraSession::new(opts).await;
+    let cassandra_session = CassandraSession::new(&opts).await;
 
     HttpServer::new(move || {
         App::new()

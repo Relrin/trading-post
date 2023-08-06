@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use cdrs_tokio::authenticators::NoneAuthenticatorProvider;
 
+use cdrs_tokio::authenticators::{StaticPasswordAuthenticatorProvider};
 use cdrs_tokio::cluster::session::{Session, SessionBuilder, TcpSessionBuilder};
 use cdrs_tokio::cluster::{NodeTcpConfigBuilder, TcpConnectionManager};
 use cdrs_tokio::load_balancing::RoundRobinLoadBalancingStrategy;
@@ -19,9 +19,14 @@ pub struct CassandraSession {
 
 impl CassandraSession {
     pub async fn new(opts: &CliOptions) -> Self {
+        let address = format!("{0}:{1}", opts.cassandra_host, opts.cassandra_port);
+        let auth = StaticPasswordAuthenticatorProvider::new(
+            opts.cassandra_user.clone(),
+            opts.cassandra_password.clone(),
+        );
         let cluster_config = NodeTcpConfigBuilder::new()
-            .with_contact_point("127.0.0.1:9042".into())
-            .with_authenticator_provider(Arc::new(NoneAuthenticatorProvider))
+            .with_contact_point(address.into())
+            .with_authenticator_provider(Arc::new(auth))
             .build()
             .await
             .unwrap();
