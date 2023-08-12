@@ -1,3 +1,5 @@
+use cdrs_tokio::query::QueryValues;
+use cdrs_tokio::query_values;
 use chrono::{DateTime, Days, Utc, Duration};
 use go_parse_duration::{parse_duration};
 use lazy_static::lazy_static;
@@ -11,7 +13,7 @@ lazy_static! {
     pub static ref TRADE_ALL_COLUMNS: &'static [&'static str] = &[
         "id", "item_id", "item_name", "bid_price", "buyout_price",
         "created_by", "created_by_username", "created_at",
-        "buyer_by", "buyer_username", "expired_at", "is_deleted",
+        "bought_by", "bought_by_username", "expired_at", "is_deleted",
     ];
 
     static ref EMPTY_UUID: Uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
@@ -27,8 +29,8 @@ pub struct Trade {
     created_by: Uuid,
     created_by_username: String,
     created_at: DateTime<Utc>,
-    buyer_by: Uuid,
-    buyer_username: String,
+    bought_by: Uuid,
+    bought_by_username: String,
     expired_at: DateTime<Utc>,
     #[serde(skip)]
     is_deleted: bool,
@@ -77,6 +79,25 @@ where
     }
 }
 
+impl Trade {
+    pub fn into_query_values(self) -> QueryValues {
+        query_values!(
+            "id" => self.id,
+            "item_id" => self.item_id,
+            "item_name" => self.item_name,
+            "bid_price" => self.bid_price,
+            "buyout_price" => self.buyout_price,
+            "created_by" => self.created_by,
+            "created_by_username" => self.created_by_username,
+            "created_at" => self.created_at,
+            "bought_by" => self.bought_by,
+            "bought_by_username" => self.bought_by_username,
+            "expired_at" => self.expired_at,
+            "is_deleted" => self.is_deleted
+        )
+    }
+}
+
 impl From<CreateTrade> for Trade {
     fn from(instance: CreateTrade) -> Self {
         let buyout_price = match instance.buyout_price {
@@ -100,8 +121,8 @@ impl From<CreateTrade> for Trade {
             created_by: instance.created_by,
             created_by_username: instance.created_by_username.clone(),
             created_at,
-            buyer_by: *EMPTY_UUID,
-            buyer_username: String::new(),
+            bought_by: *EMPTY_UUID,
+            bought_by_username: String::new(),
             expired_at,
             is_deleted: false,
         }
