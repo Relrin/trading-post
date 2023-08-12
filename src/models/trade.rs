@@ -7,6 +7,13 @@ use validator::{Validate, ValidationError};
 use uuid::{Uuid};
 
 lazy_static! {
+    pub static ref TRADE_TABLE: &'static str = "trading_post.trade";
+    pub static ref TRADE_ALL_COLUMNS: &'static [&'static str] = &[
+        "id", "item_id", "item_name", "bid_price", "buyout_price",
+        "created_by", "created_by_username", "created_at",
+        "buyer_by", "buyer_username", "expired_at", "is_deleted",
+    ];
+
     static ref EMPTY_UUID: Uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
 }
 
