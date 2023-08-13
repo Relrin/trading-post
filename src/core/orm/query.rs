@@ -1,4 +1,3 @@
-use cdrs_tokio::frame::Envelope;
 use cdrs_tokio::query::QueryValues;
 use crate::core::orm::session::CassandraSession;
 

@@ -14,5 +14,5 @@ docker-compose -f docker-compose.dev.yaml exec -ti migrations sh
 
 Run the `cassandra-migrate` command to apply list of migrations:
 ```
-migrate -database cassandra://cassandra:cassandra@cassandra-node1:9042/trading_post?protocol=4 -path ./migrations/ up
+migrate -database cassandra://cassandra-node1:9042/trading_post?protocol=4&username=cassandra&password=cassandra -path ./migrations/ up
 ```
