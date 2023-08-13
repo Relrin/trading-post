@@ -9,10 +9,10 @@ docker-compose -f docker-compose.dev.yaml up -d
 
 - Connect to a container with migrations:
 ```
-docker-compose -f docker-compose.dev.yaml exec -ti migrations bash
+docker-compose -f docker-compose.dev.yaml exec -ti migrations sh
 ```
 
 Run the `cassandra-migrate` command to apply list of migrations:
 ```
-cassandra-migrate --config-file=migrations/config.yaml --profile=dev --user=cassandra --password=cassandra --hosts cassandra-node1 migrate
+migrate -database cassandra://cassandra:cassandra@cassandra-node1:9042/trading_post?protocol=4 -path ./migrations/ up
 ```
