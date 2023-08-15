@@ -1,25 +1,34 @@
 use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::query_values;
-use chrono::{DateTime, Days, Utc, Duration};
-use go_parse_duration::{parse_duration};
+use cdrs_tokio_helpers_derive::{IntoCdrsValue, TryFromRow};
+use chrono::{DateTime, Days, Duration, Utc};
+use go_parse_duration::parse_duration;
 use lazy_static::lazy_static;
-use serde::{Serialize, Deserialize, Deserializer};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
+use uuid::Uuid;
 use validator::{Validate, ValidationError};
-use uuid::{Uuid};
 
 lazy_static! {
     pub static ref TRADE_TABLE: &'static str = "trading_post.trade";
     pub static ref TRADE_ALL_COLUMNS: &'static [&'static str] = &[
-        "id", "item_id", "item_name", "bid_price", "buyout_price",
-        "created_by", "created_by_username", "created_at",
-        "bought_by", "bought_by_username", "expired_at", "is_deleted",
+        "id",
+        "item_id",
+        "item_name",
+        "bid_price",
+        "buyout_price",
+        "created_by",
+        "created_by_username",
+        "created_at",
+        "bought_by",
+        "bought_by_username",
+        "expired_at",
+        "is_deleted",
     ];
-
     static ref EMPTY_UUID: Uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, IntoCdrsValue, TryFromRow, Debug)]
 pub struct Trade {
     id: Uuid,
     item_id: Uuid,
@@ -61,7 +70,9 @@ pub struct TradeOperation {
 fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
     if let Some(buyout_price) = instance.buyout_price {
         if buyout_price > 0 && instance.bid_price > buyout_price {
-            return Err(ValidationError::new("The bid can't be greater than the buyout price"))
+            return Err(ValidationError::new(
+                "The bid can't be greater than the buyout price",
+            ));
         }
     }
 
@@ -113,7 +124,7 @@ impl From<CreateTrade> for Trade {
         };
 
         Trade {
-            id:  Uuid::new_v4(),
+            id: Uuid::new_v4(),
             item_id: instance.item_id,
             item_name: instance.item_name,
             bid_price: instance.bid_price,

@@ -7,6 +7,7 @@ pub struct QueryBuilder<'a> {
     table: &'a str,
     columns: &'a [&'a str],
     filters: Vec<Filter<'a>>,
+    allow_filtering: bool,
 }
 
 impl<'a> QueryBuilder<'a> {
@@ -16,6 +17,7 @@ impl<'a> QueryBuilder<'a> {
             table,
             columns: &[],
             filters: vec![],
+            allow_filtering: false,
         }
     }
 
@@ -31,6 +33,11 @@ impl<'a> QueryBuilder<'a> {
 
     pub fn filter_by(mut self, filter: Filter<'a>) -> Self {
         self.filters.push(filter);
+        self
+    }
+
+    pub fn allow_filtering(mut self, value: bool) -> Self {
+        self.allow_filtering = value;
         self
     }
 
@@ -97,13 +104,23 @@ impl<'a> QueryBuilder<'a> {
     }
 
     fn build_where_clause(&self) -> String {
-        let conditions = self.filters
+        let conditions = self
+            .filters
             .iter()
-            .map(|filter| format!("{} {} ?", filter.get_field_name(), filter.get_operator().to_string()))
+            .map(|filter| {
+                format!(
+                    "{} {} ?",
+                    filter.get_field_name(),
+                    filter.get_operator().to_string()
+                )
+            })
             .collect::<Vec<String>>()
             .join(", ");
 
-        return format!("WHERE {}", conditions)
+        match self.allow_filtering {
+            true => format!("WHERE {} ALLOW FILTERING", conditions),
+            false => format!("WHERE {}", conditions),
+        }
     }
 }
 
@@ -155,6 +172,20 @@ mod tests {
     }
 
     #[test]
+    fn test_build_select_query_with_filter_and_allow_filtering() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .allow_filtering(true)
+            .filter_by(Filter::new("id", Operator::Eq))
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? ALLOW FILTERING"
+        );
+    }
+
+    #[test]
     fn test_build_insert_query() {
         let query = QueryBuilder::new("trading_post.trade")
             .query_type(QueryType::Insert)
@@ -185,6 +216,24 @@ mod tests {
             .filter_by(Filter::new("key", Operator::Eq))
             .build_update_query();
 
-        assert_eq!(query, "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ?");
+        assert_eq!(
+            query,
+            "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ?"
+        );
+    }
+
+    #[test]
+    fn test_build_update_query_with_filters_and_allow_filtering() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .query_type(QueryType::Update)
+            .columns(&["key", "value"])
+            .allow_filtering(true)
+            .filter_by(Filter::new("key", Operator::Eq))
+            .build_update_query();
+
+        assert_eq!(
+            query,
+            "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ? ALLOW FILTERING"
+        );
     }
 }
