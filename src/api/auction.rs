@@ -1,5 +1,6 @@
 use actix_web::web::{scope, Json};
 use actix_web::{get, post, web, HttpResponse, Scope};
+use actix_web_validator::Query;
 use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::types::value::Value;
 use validator::Validate;
@@ -8,7 +9,7 @@ use crate::core::error::Error;
 use crate::core::orm::filter::{Filter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
-use crate::core::pagination::PaginatedResponse;
+use crate::core::pagination::{PaginatedResponse, PaginationParams};
 use crate::models::trade::{CreateTrade, Trade, TRADE_ALL_COLUMNS, TRADE_TABLE};
 
 pub fn get_auction_router() -> Scope {
@@ -18,11 +19,14 @@ pub fn get_auction_router() -> Scope {
 }
 
 #[get("")]
-async fn list_trades(db: web::Data<CassandraSession>) -> Result<HttpResponse, Error> {
+async fn list_trades(
+    db: web::Data<CassandraSession>,
+    pagination: Query<PaginationParams>,
+) -> Result<HttpResponse, Error> {
     let mut filter_values: Vec<Value> = Vec::new();
     filter_values.push(false.into());
 
-    // TODO: Add pagination options
+    // FIXME: Error response on invalid pagination args
     // TODO: Add custom filtering by the item_id / item_name, price range
 
     let query = QueryBuilder::new(&TRADE_TABLE)
@@ -34,10 +38,10 @@ async fn list_trades(db: web::Data<CassandraSession>) -> Result<HttpResponse, Er
     let query_values = QueryValues::SimpleValues(filter_values);
 
     let objects = query
-        .get_paginated_entries::<Trade>(&db, &query_values)
+        .get_paginated_entries::<Trade>(&db, &query_values, &pagination)
         .await?;
 
-    let paginated_response = PaginatedResponse::new(1, 1, objects);
+    let paginated_response = PaginatedResponse::new(pagination.page, pagination.page_size, objects);
     Ok(HttpResponse::Ok().json(paginated_response))
 }
 

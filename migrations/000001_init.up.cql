@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     bought_by_username text,
     expired_at timestamp,
     is_deleted boolean,
-    PRIMARY KEY ((item_id, item_name), created_by)
+    PRIMARY KEY ((item_id, item_name), id, created_by)
 );
 
 CREATE INDEX IF NOT EXISTS index_trade_item_name ON trading_post.trade (item_name);
