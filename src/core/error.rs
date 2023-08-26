@@ -1,8 +1,8 @@
 use actix_web::{
-    error,
     http::{header::ContentType, StatusCode},
-    HttpResponse,
+    HttpRequest, HttpResponse, ResponseError,
 };
+use actix_web_validator::error::Error as ActixWebValidatorError;
 use cdrs_tokio::error::Error as CdrsError;
 use derive_more::{Display, Error};
 use serde_json::{json, Value};
@@ -16,13 +16,16 @@ pub enum Error {
     ValidationError { message: String, errors: Value },
     #[display(fmt = "{{\"detail\": \"{0}\"}}", message)]
     CassandraError { message: String },
+    #[display(fmt = "{{\"detail\": \"{0}\"}}", message)]
+    ActixWebValidatorError { message: String },
 }
 
-impl error::ResponseError for Error {
+impl actix_web::error::ResponseError for Error {
     fn status_code(&self) -> StatusCode {
         match *self {
             Error::ValidationError { .. } => StatusCode::BAD_REQUEST,
             Error::CassandraError { .. } => StatusCode::BAD_REQUEST,
+            Error::ActixWebValidatorError { .. } => StatusCode::BAD_REQUEST,
         }
     }
 
@@ -50,4 +53,24 @@ impl From<CdrsError> for Error {
             message: String::from("Internal error"),
         }
     }
+}
+
+impl From<ActixWebValidatorError> for Error {
+    fn from(value: ActixWebValidatorError) -> Self {
+        match value {
+            ActixWebValidatorError::Validate(errors) => Error::from(errors),
+            _ => Error::ActixWebValidatorError {
+                message: value.to_string(),
+            },
+        }
+    }
+}
+
+pub fn transform_actix_web_validator_error(
+    error: actix_web_validator::Error,
+    _request: &HttpRequest,
+) -> actix_web::error::Error {
+    let err = Error::from(error);
+    let response = err.error_response();
+    actix_web::error::InternalError::from_response(err, response).into()
 }

@@ -3,12 +3,13 @@ mod cli;
 mod core;
 mod models;
 
-use actix_web::{App, web, HttpServer, middleware};
+use actix_web::{middleware, web, App, HttpServer};
 use structopt::StructOpt;
 
 use crate::api::auction::get_auction_router;
 use crate::api::k8s::get_k8s_router;
 use crate::cli::CliOptions;
+use crate::core::error::transform_actix_web_validator_error;
 use crate::core::orm::session::create_cassandra_session;
 
 const MAX_JSON_SIZE: usize = 4096;
@@ -25,6 +26,10 @@ async fn main() -> std::io::Result<()> {
             .wrap(middleware::Logger::default().log_target("http_log"))
             .app_data(web::JsonConfig::default().limit(MAX_JSON_SIZE))
             .app_data(web::Data::new(cassandra_session.clone()))
+            .app_data(
+                actix_web_validator::QueryConfig::default()
+                    .error_handler(|err, req| transform_actix_web_validator_error(err, req)),
+            )
             .service(get_auction_router())
             .service(get_k8s_router())
     })

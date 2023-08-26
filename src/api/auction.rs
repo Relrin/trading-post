@@ -26,7 +26,6 @@ async fn list_trades(
     let mut filter_values: Vec<Value> = Vec::new();
     filter_values.push(false.into());
 
-    // FIXME: Error response on invalid pagination args
     // TODO: Add custom filtering by the item_id / item_name, price range
 
     let query = QueryBuilder::new(&TRADE_TABLE)
