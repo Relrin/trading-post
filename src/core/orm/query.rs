@@ -10,12 +10,14 @@ use crate::core::pagination::PaginationParams;
 #[derive(Debug)]
 pub struct Query {
     raw_cql: String,
+    filter_values: QueryValues,
 }
 
 impl Query {
-    pub fn new(raw_cql: &str) -> Self {
+    pub fn new(raw_cql: &str, filter_values: QueryValues) -> Self {
         Query {
             raw_cql: raw_cql.to_owned(),
+            filter_values,
         }
     }
 

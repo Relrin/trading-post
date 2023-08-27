@@ -1,3 +1,4 @@
+use cdrs_tokio::query::QueryValues;
 
 #[derive(Debug, Clone)]
 pub struct Filter<'a> {
@@ -32,5 +33,32 @@ impl Operator {
         match self {
             Operator::Eq => String::from("="),
         }
+    }
+}
+
+pub trait IntoCustomFilter<'a> {
+    fn into_custom_filter<T>(self, value: T) -> Option<CustomFilter<'a>>;
+}
+
+#[derive(Debug, Clone)]
+pub struct CustomFilter<'a> {
+    filters: Vec<Filter<'a>>,
+    query_values: QueryValues,
+}
+
+impl<'a> CustomFilter<'a> {
+    pub fn new(filters: Vec<Filter<'a>>, query_values: QueryValues) -> Self {
+        Self {
+            filters,
+            query_values,
+        }
+    }
+
+    pub fn get_filters(&self) -> &Vec<Filter<'a>> {
+        &self.filters
+    }
+
+    pub fn get_query_values(&self) -> &QueryValues {
+        &self.query_values
     }
 }
