@@ -6,7 +6,7 @@ mod models;
 use actix_web::{middleware, web, App, HttpServer};
 use structopt::StructOpt;
 
-use crate::api::auction::get_auction_router;
+use crate::api::auction::api::get_auction_router;
 use crate::api::k8s::get_k8s_router;
 use crate::cli::CliOptions;
 use crate::core::error::transform_actix_web_validator_error;
