@@ -1,5 +1,6 @@
 use cdrs_tokio::frame::TryFromRow;
 use cdrs_tokio::query::{QueryParamsBuilder, QueryValues};
+use cdrs_tokio::types::prelude::Value;
 use cdrs_tokio::types::rows::Row;
 use serde::Serialize;
 
@@ -37,11 +38,12 @@ impl Query {
     where
         T: Serialize + TryFromRow,
     {
+        let all_query_values = self.get_merged_query_values(&query_values);
         let mut pager = session.paged(pagination_params.page_size);
         let mut query_pager = pager.query_with_params(
             &self.raw_cql,
             QueryParamsBuilder::new()
-                .with_values(query_values.to_owned())
+                .with_values(all_query_values)
                 .build(),
         );
 
@@ -65,5 +67,23 @@ impl Query {
             .into_iter()
             .map(|row| T::try_from_row(row).expect("decode row"))
             .collect())
+    }
+
+    fn get_merged_query_values(&self, query_values: &QueryValues) -> QueryValues {
+        let mut values = Vec::<Value>::new();
+        self.copy_query_values_into_vec(&mut values, query_values);
+        self.copy_query_values_into_vec(&mut values, &self.filter_values);
+        QueryValues::SimpleValues(values)
+    }
+
+    fn copy_query_values_into_vec(&self, container: &mut Vec<Value>, query_values: &QueryValues) {
+        match &query_values {
+            QueryValues::SimpleValues(vec) => container.extend_from_slice(&vec),
+            QueryValues::NamedValues(hash_map) => {
+                for value in hash_map.values() {
+                    container.push(value.clone())
+                }
+            }
+        };
     }
 }
