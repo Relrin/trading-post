@@ -14,14 +14,14 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     bought_by_username text,
     expired_at timestamp,
     is_deleted boolean,
-    PRIMARY KEY ((item_id, item_name), id, created_by)
+    PRIMARY KEY (item_id, id, created_by)
 );
 
 CREATE CUSTOM INDEX IF NOT EXISTS index_trade_item_name ON trading_post.trade(item_name)
 USING 'org.apache.cassandra.index.sasi.SASIIndex'
 WITH OPTIONS = {
     'mode': 'CONTAINS',
-    'analyzer_class': 'org.apache.cassandra.index.sasi.analyzer.NonTokenizingAnalyzer',
+    'analyzer_class': 'org.apache.cassandra.index.sasi.analyzer.StandardAnalyzer',
     'case_sensitive': 'false'
 };
 CREATE INDEX IF NOT EXISTS index_trade_created_by ON trading_post.trade (created_by);
