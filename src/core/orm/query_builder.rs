@@ -139,7 +139,7 @@ impl<'a> QueryBuilder<'a> {
                 }
             })
             .collect::<Vec<String>>()
-            .join(", ");
+            .join(" AND ");
 
         match self.allow_filtering {
             true => format!("WHERE {} ALLOW FILTERING", conditions),
@@ -297,7 +297,7 @@ mod tests {
 
         assert_eq!(
             query,
-            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ?, item_id = ? ALLOW FILTERING"
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? AND item_id = ? ALLOW FILTERING"
         );
     }
 
@@ -403,7 +403,7 @@ mod tests {
 
         assert_eq!(
             query,
-            "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ?, value = ? ALLOW FILTERING"
+            "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ? AND value = ? ALLOW FILTERING"
         );
     }
 
@@ -422,7 +422,7 @@ mod tests {
 
         assert_eq!(
             query,
-            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ?, item_id = ? ALLOW FILTERING"
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? AND item_id = ? ALLOW FILTERING"
         );
     }
 

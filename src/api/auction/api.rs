@@ -42,6 +42,7 @@ async fn list_trades(
         .filter_by(Filter::new("is_deleted", Operator::Eq))
         .custom_filters(&backend_filters)
         .build();
+    println!("{:?}", query);
     let query_values = QueryValues::SimpleValues(filter_values);
 
     let objects = query
