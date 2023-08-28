@@ -1,4 +1,6 @@
 use cdrs_tokio::query::QueryValues;
+use serde::de::Unexpected::Str;
+use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Filter<'a> {
@@ -26,18 +28,20 @@ impl<'a> Filter<'a> {
 #[derive(Debug, Clone)]
 pub enum Operator {
     Eq,
+    LikeContains(String),
 }
 
 impl Operator {
     pub fn to_string(&self) -> String {
         match self {
             Operator::Eq => String::from("="),
+            Operator::LikeContains(pattern) => pattern.to_owned(),
         }
     }
 }
 
 pub trait IntoCustomFilter<'a> {
-    fn into_custom_filter<T>(self, value: T) -> Option<CustomFilter<'a>>;
+    fn into_custom_filter(self) -> Option<CustomFilter<'a>>;
 }
 
 #[derive(Debug, Clone)]

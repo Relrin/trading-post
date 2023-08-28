@@ -1,4 +1,4 @@
-use crate::core::orm::filter::{CustomFilter, Filter};
+use crate::core::orm::filter::{CustomFilter, Filter, Operator};
 use crate::core::orm::query::Query;
 use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::types::value::Value;
@@ -125,11 +125,18 @@ impl<'a> QueryBuilder<'a> {
             .filters
             .iter()
             .map(|filter| {
-                format!(
-                    "{} {} ?",
-                    filter.get_field_name(),
-                    filter.get_operator().to_string()
-                )
+                let filter_operator = filter.get_operator();
+
+                match filter_operator {
+                    Operator::LikeContains(pattern) => {
+                        format!("{} LIKE {}", filter.get_field_name(), pattern)
+                    }
+                    _ => format!(
+                        "{} {} ?",
+                        filter.get_field_name(),
+                        filter_operator.to_string()
+                    ),
+                }
             })
             .collect::<Vec<String>>()
             .join(", ");

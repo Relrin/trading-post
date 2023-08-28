@@ -5,8 +5,9 @@ use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::types::value::Value;
 use validator::Validate;
 
+use crate::api::auction::filters::{FilterParams, ItemNameFilter};
 use crate::core::error::Error;
-use crate::core::orm::filter::{Filter, Operator};
+use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
 use crate::core::pagination::{PaginatedResponse, PaginationParams};
@@ -22,17 +23,24 @@ pub fn get_auction_router() -> Scope {
 async fn list_trades(
     db: web::Data<CassandraSession>,
     pagination: Query<PaginationParams>,
+    filters: Query<FilterParams>,
 ) -> Result<HttpResponse, Error> {
     let mut filter_values: Vec<Value> = Vec::new();
     filter_values.push(false.into());
 
-    // TODO: Add custom filtering by the item_id / item_name, price range
+    let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
+    let backend_filters: Vec<&CustomFilter> = vec![&item_name_filter]
+        .iter()
+        .filter(|f| f.is_some())
+        .map(|f| f.as_ref().unwrap())
+        .collect();
 
     let query = QueryBuilder::new(&TRADE_TABLE)
         .query_type(QueryType::Select)
         .columns(&TRADE_ALL_COLUMNS)
         .allow_filtering(true)
         .filter_by(Filter::new("is_deleted", Operator::Eq))
+        .custom_filters(&backend_filters)
         .build();
     let query_values = QueryValues::SimpleValues(filter_values);
 
