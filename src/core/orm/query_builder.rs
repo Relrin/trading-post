@@ -36,7 +36,7 @@ impl<'a> QueryBuilder<'a> {
     }
 
     pub fn filter_by(mut self, filter: Filter<'a>) -> Self {
-        self.filters.push(filter);
+        self.filters.insert(0, filter);
         self
     }
 
@@ -381,6 +381,25 @@ mod tests {
         assert_eq!(
             query,
             "UPDATE trading_post.trade SET key = ?, value = ? WHERE key = ?, value = ? ALLOW FILTERING"
+        );
+    }
+
+    #[test]
+    fn test_custom_filters_appear_always_in_end() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .allow_filtering(true)
+            // intentionally placed before for builder behaviour check
+            .custom_filters(&[&CustomFilter::new(
+                vec![Filter::new("item_id", Operator::Eq)],
+                query_values!(5),
+            )])
+            .filter_by(Filter::new("id", Operator::Eq))
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ?, item_id = ? ALLOW FILTERING"
         );
     }
 
