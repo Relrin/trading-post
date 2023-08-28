@@ -9,9 +9,9 @@ docker-compose -f docker-compose.dev.yaml up -d
 
 - Enable SASI (experimental) feature by changing Cassandra configuration:
 ```
-docker-compose -f .\docker-compose.dev.yaml exec -ti cassandra-node3 mkdir -p /bitnami/cassandra/conf/
-docker-compose -f .\docker-compose.dev.yaml exec -ti cassandra-node3 cp /opt/bitnami/cassandra/conf/cassandra.yaml /bitnami/cassandra/conf/cassandra.yaml
-docker-compose -f .\docker-compose.dev.yaml exec -ti cassandra-node3 sed -i '/enable_sasi_indexes: false/c\enable_sasi_indexes: true' /bitnami/cassandra/conf/cassandra.yaml
+docker-compose -f .\docker-compose.dev.yaml exec -ti <node-name> mkdir -p /bitnami/cassandra/conf/
+docker-compose -f .\docker-compose.dev.yaml exec -ti <node-name> cp /opt/bitnami/cassandra/conf/cassandra.yaml /bitnami/cassandra/conf/cassandra.yaml
+docker-compose -f .\docker-compose.dev.yaml exec -ti <node-name> sed -i '/enable_sasi_indexes: false/c\enable_sasi_indexes: true' /bitnami/cassandra/conf/cassandra.yaml
 ```
 
 - Restart Cassandra nodes after changes:
