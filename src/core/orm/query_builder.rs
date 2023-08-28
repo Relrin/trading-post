@@ -129,7 +129,7 @@ impl<'a> QueryBuilder<'a> {
 
                 match filter_operator {
                     Operator::LikeContains(pattern) => {
-                        format!("{} LIKE {}", filter.get_field_name(), pattern)
+                        format!("{} LIKE '{}'", filter.get_field_name(), pattern)
                     }
                     _ => format!(
                         "{} {} ?",
@@ -264,6 +264,22 @@ mod tests {
         assert_eq!(
             query,
             "SELECT id, item_id, item_name FROM trading_post.trade WHERE item_id = ? ALLOW FILTERING"
+        );
+    }
+
+    #[test]
+    fn test_build_select_query_with_like_check() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .filter_by(Filter::new(
+                "item_name",
+                Operator::LikeContains(String::from("%sword")),
+            ))
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE item_name LIKE '%sword'"
         );
     }
 
