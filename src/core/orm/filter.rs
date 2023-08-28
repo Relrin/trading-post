@@ -1,6 +1,4 @@
 use cdrs_tokio::query::QueryValues;
-use serde::de::Unexpected::Str;
-use serde::Deserialize;
 
 #[derive(Debug, Clone)]
 pub struct Filter<'a> {
