@@ -17,6 +17,12 @@ CREATE TABLE IF NOT EXISTS trading_post.trade (
     PRIMARY KEY ((item_id, item_name), id, created_by)
 );
 
-CREATE INDEX IF NOT EXISTS index_trade_item_name ON trading_post.trade (item_name);
+CREATE CUSTOM INDEX IF NOT EXISTS index_trade_item_name ON trading_post.trade(item_name)
+USING 'org.apache.cassandra.index.sasi.SASIIndex'
+WITH OPTIONS = {
+    'mode': 'CONTAINS',
+    'analyzer_class': 'org.apache.cassandra.index.sasi.analyzer.NonTokenizingAnalyzer',
+    'case_sensitive': 'false'
+};
 CREATE INDEX IF NOT EXISTS index_trade_created_by ON trading_post.trade (created_by);
 CREATE INDEX IF NOT EXISTS index_trade_created_by_username ON trading_post.trade (created_by_username);
