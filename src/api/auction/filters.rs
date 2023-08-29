@@ -48,20 +48,6 @@ impl<'a> ItemBidPriceRangeFilter<'a> {
     pub fn new(params: &'a FilterParams) -> Self {
         Self { params }
     }
-
-    fn get_min_price_filter(&self) -> Option<(Filter<'a>, i64)> {
-        match &self.params.min_price {
-            Some(min_price) => Some((Filter::new("bid_price", Gte), min_price.clone())),
-            None => None,
-        }
-    }
-
-    fn get_max_price_filter(&self) -> Option<(Filter<'a>, i64)> {
-        match &self.params.max_price {
-            Some(max_price) => Some((Filter::new("bid_price", Lte), max_price.clone())),
-            None => None,
-        }
-    }
 }
 
 impl<'a> IntoCustomFilter<'a> for ItemBidPriceRangeFilter<'a> {
@@ -69,14 +55,61 @@ impl<'a> IntoCustomFilter<'a> for ItemBidPriceRangeFilter<'a> {
         let mut filters = vec![];
         let mut values: Vec<Value> = vec![];
 
-        if let Some((min_price_filter, min_price)) = self.get_min_price_filter() {
-            filters.push(min_price_filter);
-            values.push(min_price.into());
+        match &self.params.min_price {
+            Some(min_price) => {
+                filters.push(Filter::new("bid_price", Gte));
+                values.push(min_price.clone().into());
+            }
+            _ => {}
         }
 
-        if let Some((max_price_filter, max_price)) = self.get_max_price_filter() {
-            filters.push(max_price_filter);
-            values.push(max_price.into());
+        match &self.params.max_price {
+            Some(max_price) => {
+                filters.push(Filter::new("bid_price", Lte));
+                values.push(max_price.clone().into());
+            }
+            _ => {}
+        }
+
+        match filters.len() > 0 {
+            true => {
+                let instance = CustomFilter::new(filters, QueryValues::SimpleValues(values));
+                Some(instance)
+            }
+            false => None,
+        }
+    }
+}
+
+pub struct ItemBuyoutPriceRangeFilter<'a> {
+    params: &'a FilterParams,
+}
+
+impl<'a> ItemBuyoutPriceRangeFilter<'a> {
+    pub fn new(params: &'a FilterParams) -> Self {
+        Self { params }
+    }
+}
+
+impl<'a> IntoCustomFilter<'a> for ItemBuyoutPriceRangeFilter<'a> {
+    fn into_custom_filter(self) -> Option<CustomFilter<'a>> {
+        let mut filters = vec![];
+        let mut values: Vec<Value> = vec![];
+
+        match &self.params.min_buyout_price {
+            Some(min_buyout_price) => {
+                filters.push(Filter::new("buyout_price", Gte));
+                values.push(min_buyout_price.clone().into());
+            }
+            _ => {}
+        }
+
+        match &self.params.max_buyout_price {
+            Some(max_buyout_price) => {
+                filters.push(Filter::new("buyout_price", Lte));
+                values.push(max_buyout_price.clone().into());
+            }
+            _ => {}
         }
 
         match filters.len() > 0 {

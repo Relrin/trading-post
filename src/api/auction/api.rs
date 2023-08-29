@@ -5,7 +5,9 @@ use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::types::value::Value;
 use validator::Validate;
 
-use crate::api::auction::filters::{FilterParams, ItemBidPriceRangeFilter, ItemNameFilter};
+use crate::api::auction::filters::{
+    FilterParams, ItemBidPriceRangeFilter, ItemBuyoutPriceRangeFilter, ItemNameFilter,
+};
 use crate::core::error::Error;
 use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
@@ -30,12 +32,17 @@ async fn list_trades(
 
     let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
     let item_bid_price_filter = ItemBidPriceRangeFilter::new(&filters).into_custom_filter();
+    let item_buyout_price_filter = ItemBuyoutPriceRangeFilter::new(&filters).into_custom_filter();
 
-    let backend_filters: Vec<&CustomFilter> = vec![&item_name_filter, &item_bid_price_filter]
-        .iter()
-        .filter(|f| f.is_some())
-        .map(|f| f.as_ref().unwrap())
-        .collect();
+    let backend_filters: Vec<&CustomFilter> = vec![
+        &item_name_filter,
+        &item_bid_price_filter,
+        &item_buyout_price_filter,
+    ]
+    .iter()
+    .filter(|f| f.is_some())
+    .map(|f| f.as_ref().unwrap())
+    .collect();
 
     let query = QueryBuilder::new(&TRADE_TABLE)
         .query_type(QueryType::Select)
