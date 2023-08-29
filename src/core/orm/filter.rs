@@ -26,6 +26,8 @@ impl<'a> Filter<'a> {
 #[derive(Debug, Clone)]
 pub enum Operator {
     Eq,
+    Lte,
+    Gte,
     LikeContains(String),
 }
 
@@ -33,6 +35,8 @@ impl Operator {
     pub fn to_string(&self) -> String {
         match self {
             Operator::Eq => String::from("="),
+            Operator::Lte => String::from("<="),
+            Operator::Gte => String::from(">="),
             Operator::LikeContains(pattern) => pattern.to_owned(),
         }
     }
