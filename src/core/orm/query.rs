@@ -1,10 +1,11 @@
+use crate::core::error::Error::CassandraError;
 use cdrs_tokio::frame::TryFromRow;
 use cdrs_tokio::query::{QueryParamsBuilder, QueryValues};
 use cdrs_tokio::types::prelude::Value;
 use cdrs_tokio::types::rows::Row;
 use serde::Serialize;
 
-use crate::core::error::Result;
+use crate::core::error::{CantReadCassandraResponseBody, Result, RowNotFoundError};
 use crate::core::orm::session::CassandraSession;
 use crate::core::pagination::PaginationParams;
 
@@ -28,6 +29,27 @@ impl Query {
             .await
             .expect("Error inserting data");
     }
+
+    // pub async fn get_instance<T>(
+    //     &self,
+    //     session: &CassandraSession,
+    //     query_values: &QueryValues,
+    // ) -> Result<T>
+    // where
+    //     T: Serialize + TryFromRow,
+    // {
+    //     let all_query_values = self.get_merged_query_values(&query_values);
+    //
+    //     let row = session
+    //         .query_with_values(&self.raw_cql, all_query_values)
+    //         .await
+    //         .map_err(&RowNotFoundError)
+    //         .map(|envelope| envelope.response_body())
+    //         .map_err(&CantReadCassandraResponseBody)
+    //         .map(|response_body| *response_body)?;
+    //
+    //     Ok(T::try_from_row(row).expect("decode row"))
+    // }
 
     pub async fn get_paginated_entries<T>(
         &self,

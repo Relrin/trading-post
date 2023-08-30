@@ -5,10 +5,20 @@ use actix_web::{
 use actix_web_validator::error::Error as ActixWebValidatorError;
 use cdrs_tokio::error::Error as CdrsError;
 use derive_more::{Display, Error};
+use lazy_static::lazy_static;
 use serde_json::{json, Value};
 use validator::ValidationErrors;
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+lazy_static! {
+    pub static ref RowNotFoundError: Error = Error::CassandraError {
+        message: String::from("Object was not found or doesn't exist.")
+    };
+    pub static ref CantReadCassandraResponseBody: Error = Error::CassandraError {
+        message: String::from("Can't read the response body retrieved from CassandraDB.")
+    };
+}
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
