@@ -30,7 +30,7 @@ pub enum Error {
     ActixWebValidatorError { message: String },
 }
 
-impl actix_web::error::ResponseError for Error {
+impl ResponseError for Error {
     fn status_code(&self) -> StatusCode {
         match *self {
             Error::ValidationError { .. } => StatusCode::BAD_REQUEST,

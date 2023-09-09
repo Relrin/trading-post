@@ -8,6 +8,7 @@ pub struct QueryBuilder<'a> {
     query_type: QueryType,
     table: &'a str,
     columns: &'a [&'a str],
+    limit: Option<usize>,
     filters: Vec<Filter<'a>>,
     filter_values: Vec<QueryValues>,
     allow_filtering: bool,
@@ -19,6 +20,7 @@ impl<'a> QueryBuilder<'a> {
             query_type: QueryType::Select,
             table,
             columns: &[],
+            limit: None,
             filters: vec![],
             filter_values: vec![],
             allow_filtering: false,
@@ -32,6 +34,11 @@ impl<'a> QueryBuilder<'a> {
 
     pub fn columns(mut self, columns: &'a [&'a str]) -> Self {
         self.columns = columns;
+        self
+    }
+
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = Some(limit);
         self
     }
 
@@ -77,6 +84,10 @@ impl<'a> QueryBuilder<'a> {
 
         if self.filters.len() > 0 {
             query.push(self.build_where_clause());
+        }
+
+        if let Some(value) = self.limit {
+            query.push(format!("LIMIT {}", value));
         }
 
         query.join(" ")
@@ -189,7 +200,6 @@ impl QueryType {
 #[cfg(test)]
 mod tests {
     use crate::core::orm::filter::{CustomFilter, Filter, Operator};
-    use crate::core::orm::query::Query;
     use crate::core::orm::query_builder::{QueryBuilder, QueryType};
     use cdrs_tokio::query::QueryValues;
     use cdrs_tokio::query_values;
@@ -208,6 +218,19 @@ mod tests {
     }
 
     #[test]
+    fn test_build_select_query_with_limit() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .limit(1)
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade LIMIT 1"
+        );
+    }
+
+    #[test]
     fn test_build_select_query_with_filter() {
         let query = QueryBuilder::new("trading_post.trade")
             .columns(&["id", "item_id", "item_name"])
@@ -217,6 +240,20 @@ mod tests {
         assert_eq!(
             query,
             "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ?"
+        );
+    }
+
+    #[test]
+    fn test_build_select_query_with_filter_and_limit() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .filter_by(Filter::new("id", Operator::Eq))
+            .limit(1)
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? LIMIT 1"
         );
     }
 
