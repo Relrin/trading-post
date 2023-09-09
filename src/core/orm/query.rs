@@ -1,11 +1,11 @@
-use crate::core::error::Error::CassandraError;
 use cdrs_tokio::frame::TryFromRow;
 use cdrs_tokio::query::{QueryParamsBuilder, QueryValues};
 use cdrs_tokio::types::prelude::Value;
 use cdrs_tokio::types::rows::Row;
+use log::error;
 use serde::Serialize;
 
-use crate::core::error::{CantReadCassandraResponseBody, Result, RowNotFoundError};
+use crate::core::error::{Error, Result};
 use crate::core::orm::session::CassandraSession;
 use crate::core::pagination::PaginationParams;
 
@@ -30,26 +30,44 @@ impl Query {
             .expect("Error inserting data");
     }
 
-    // pub async fn get_instance<T>(
-    //     &self,
-    //     session: &CassandraSession,
-    //     query_values: &QueryValues,
-    // ) -> Result<T>
-    // where
-    //     T: Serialize + TryFromRow,
-    // {
-    //     let all_query_values = self.get_merged_query_values(&query_values);
-    //
-    //     let row = session
-    //         .query_with_values(&self.raw_cql, all_query_values)
-    //         .await
-    //         .map_err(&RowNotFoundError)
-    //         .map(|envelope| envelope.response_body())
-    //         .map_err(&CantReadCassandraResponseBody)
-    //         .map(|response_body| *response_body)?;
-    //
-    //     Ok(T::try_from_row(row).expect("decode row"))
-    // }
+    pub async fn get_instance<T>(
+        &self,
+        session: &CassandraSession,
+        query_values: &QueryValues,
+    ) -> Result<T>
+    where
+        T: Serialize + TryFromRow,
+    {
+        let all_query_values = self.get_merged_query_values(&query_values);
+
+        let rows = session
+            .query_with_values(&self.raw_cql, all_query_values)
+            .await
+            .map_err(|err| {
+                error!("{}", err);
+                Error::CassandraError {
+                    message: String::from("Object was not found or doesn't exist."),
+                }
+            })
+            .map(|envelope| envelope.response_body())
+            .map_err(|err| {
+                error!("{}", err);
+                Error::CassandraError {
+                    message: String::from("Can't read the response body."),
+                }
+            })
+            .map(|response_body| response_body.unwrap().into_rows())?
+            .unwrap_or(vec![]);
+
+        if rows.len() == 0 {
+            return Err(Error::CassandraError {
+                message: String::from("Object was not found or doesn't exist."),
+            });
+        }
+
+        let row = rows.first().unwrap().to_owned();
+        Ok(T::try_from_row(row).expect("decode row"))
+    }
 
     pub async fn get_paginated_entries<T>(
         &self,

@@ -86,8 +86,12 @@ impl<'a> QueryBuilder<'a> {
             query.push(self.build_where_clause());
         }
 
-        if let Some(value) = self.limit {
-            query.push(format!("LIMIT {}", value));
+        if let Some(limit) = self.limit {
+            query.push(format!("LIMIT {}", limit));
+        }
+
+        if self.allow_filtering {
+            query.push("ALLOW FILTERING".to_owned());
         }
 
         query.join(" ")
@@ -108,6 +112,10 @@ impl<'a> QueryBuilder<'a> {
                 .join(", ")
         ));
 
+        if self.allow_filtering {
+            query.push("ALLOW FILTERING".to_owned());
+        }
+
         query.join(" ")
     }
 
@@ -126,6 +134,10 @@ impl<'a> QueryBuilder<'a> {
 
         if self.filters.len() > 0 {
             query.push(self.build_where_clause());
+        }
+
+        if self.allow_filtering {
+            query.push("ALLOW FILTERING".to_owned());
         }
 
         query.join(" ")
@@ -152,10 +164,7 @@ impl<'a> QueryBuilder<'a> {
             .collect::<Vec<String>>()
             .join(" AND ");
 
-        match self.allow_filtering {
-            true => format!("WHERE {} ALLOW FILTERING", conditions),
-            false => format!("WHERE {}", conditions),
-        }
+        format!("WHERE {}", conditions)
     }
 
     fn merge_filter_values(&self) -> QueryValues {
@@ -268,6 +277,21 @@ mod tests {
         assert_eq!(
             query,
             "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? ALLOW FILTERING"
+        );
+    }
+
+    #[test]
+    fn test_build_select_query_with_filter_and_limit_and_allow_filtering() {
+        let query = QueryBuilder::new("trading_post.trade")
+            .columns(&["id", "item_id", "item_name"])
+            .limit(1)
+            .allow_filtering(true)
+            .filter_by(Filter::new("id", Operator::Eq))
+            .build_select_query();
+
+        assert_eq!(
+            query,
+            "SELECT id, item_id, item_name FROM trading_post.trade WHERE id = ? LIMIT 1 ALLOW FILTERING"
         );
     }
 

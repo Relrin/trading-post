@@ -21,6 +21,7 @@ pub fn get_auction_router() -> Scope {
     scope("/api/v1/auction/trades")
         .service(list_trades)
         .service(create_trade)
+        .service(bid_trade)
 }
 
 #[get("")]
@@ -81,25 +82,27 @@ async fn create_trade(
     Ok(HttpResponse::Ok().finish())
 }
 
-#[put("/{detail}/bid")]
+#[put("/{id}/bid")]
 async fn bid_trade(
-    detail: web::Path<TradeDetail>,
+    id: web::Path<TradeDetail>,
     data: Json<TradeBid>,
     db: web::Data<CassandraSession>,
 ) -> Result<HttpResponse, Error> {
-    // data.validate()?;
-    // let trade_id = detail.into_inner().id;
-    //
-    // let read_query = QueryBuilder::new(&TRADE_TABLE)
-    //     .query_type(QueryType::Select)
-    //     .columns(&TRADE_ALL_COLUMNS)
-    //     .filter_by(Filter::new("id", Operator::Eq))
-    //     .filter_by(Filter::new("is_deleted", Operator::Eq))
-    //     .build();
-    // let read_query_values = query_values!("id" => trade_id, "is_deleted" => false);
-    //let trade = read_query_values
-    //    .get_instance::<Trade>(&db, &read_query_values)
-    //    .await?;
+    data.validate()?;
+    let trade_id = id.into_inner().id;
+
+    let read_query = QueryBuilder::new(&TRADE_TABLE)
+        .query_type(QueryType::Select)
+        .columns(&TRADE_ALL_COLUMNS)
+        .limit(1)
+        .filter_by(Filter::new("id", Operator::Eq))
+        .filter_by(Filter::new("is_deleted", Operator::Eq))
+        .allow_filtering(true)
+        .build();
+    let read_query_values = query_values!("id" => trade_id, "is_deleted" => false);
+    let trade = read_query
+        .get_instance::<Trade>(&db, &read_query_values)
+        .await?;
 
     // check against current bid
     // check against buyout
