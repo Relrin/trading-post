@@ -134,7 +134,7 @@ impl From<CreateTrade> for Trade {
 
         let created_at = Utc::now();
         let expired_at = match instance.expire_in {
-            Some(duration) => Utc::now() + duration,
+            Some(duration) => created_at + duration,
             // Set a date before the created_at date to indicate that expiration wasn't set
             None => created_at - Days::new(1),
         };

@@ -38,10 +38,6 @@ impl Query {
     ) -> Result<Envelope> {
         let update_query_values = self.get_merged_query_values(&query_values);
 
-        println!("{:?}", self.raw_cql);
-        println!("{:?}", self.query_values);
-        println!("{:?}", update_query_values);
-
         session
             .query_with_values(&self.raw_cql, update_query_values)
             .await
