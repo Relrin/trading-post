@@ -1,16 +1,18 @@
-use cdrs_tokio::query::QueryValues;
+use cdrs_tokio::types::value::Value;
 
 #[derive(Debug, Clone)]
 pub struct Filter<'a> {
     field_name: &'a str,
     operator: Operator,
+    value: Option<Value>,
 }
 
 impl<'a> Filter<'a> {
-    pub fn new(field_name: &'a str, operator: Operator) -> Self {
+    pub fn new(field_name: &'a str, operator: Operator, value: Option<Value>) -> Self {
         Self {
             field_name,
             operator,
+            value,
         }
     }
 
@@ -20,6 +22,10 @@ impl<'a> Filter<'a> {
 
     pub fn get_operator(&self) -> Operator {
         self.operator.clone()
+    }
+
+    pub fn get_value(&self) -> Option<Value> {
+        self.value.clone()
     }
 }
 
@@ -49,22 +55,14 @@ pub trait IntoCustomFilter<'a> {
 #[derive(Debug, Clone)]
 pub struct CustomFilter<'a> {
     filters: Vec<Filter<'a>>,
-    query_values: QueryValues,
 }
 
 impl<'a> CustomFilter<'a> {
-    pub fn new(filters: Vec<Filter<'a>>, query_values: QueryValues) -> Self {
-        Self {
-            filters,
-            query_values,
-        }
+    pub fn new(filters: Vec<Filter<'a>>) -> Self {
+        Self { filters }
     }
 
     pub fn get_filters(&self) -> &Vec<Filter<'a>> {
         &self.filters
-    }
-
-    pub fn get_query_values(&self) -> &QueryValues {
-        &self.query_values
     }
 }

@@ -1,9 +1,7 @@
 use actix_web::web::{scope, Json};
 use actix_web::{get, post, put, web, HttpResponse, Scope};
 use actix_web_validator::Query;
-use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::query_values;
-use cdrs_tokio::types::value::Value;
 use serde_json::json;
 use validator::Validate;
 
@@ -31,9 +29,6 @@ async fn list_trades(
     pagination: Query<PaginationParams>,
     filters: Query<FilterParams>,
 ) -> Result<HttpResponse, Error> {
-    let mut filter_values: Vec<Value> = Vec::new();
-    filter_values.push(false.into());
-
     let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
     let item_bid_price_filter = ItemBidPriceRangeFilter::new(&filters).into_custom_filter();
     let item_buyout_price_filter = ItemBuyoutPriceRangeFilter::new(&filters).into_custom_filter();
@@ -52,13 +47,12 @@ async fn list_trades(
         .query_type(QueryType::Select)
         .columns(&TRADE_ALL_COLUMNS)
         .allow_filtering(true)
-        .filter_by(Filter::new("is_deleted", Operator::Eq))
+        .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
         .custom_filters(&backend_filters)
         .build();
-    let query_values = QueryValues::SimpleValues(filter_values);
 
     let objects = query
-        .get_paginated_entries::<Trade>(&db, &query_values, &pagination)
+        .get_paginated_entries::<Trade>(&db, &pagination)
         .await?;
 
     let paginated_response = PaginatedResponse::new(pagination.page, pagination.page_size, objects);
@@ -92,22 +86,15 @@ async fn bid_trade(
     data.validate()?;
     let trade_id = detail.into_inner().id;
 
-    let mut filter_values: Vec<Value> = Vec::new();
-    filter_values.push(false.into());
-    filter_values.push(trade_id.into());
-
     let read_query = QueryBuilder::new(&TRADE_TABLE)
         .query_type(QueryType::Select)
         .columns(&TRADE_ALL_COLUMNS)
         .limit(1)
-        .filter_by(Filter::new("id", Operator::Eq))
-        .filter_by(Filter::new("is_deleted", Operator::Eq))
+        .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+        .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
         .allow_filtering(true)
         .build();
-    let read_query_values = QueryValues::SimpleValues(filter_values);
-    let trade = read_query
-        .get_instance::<Trade>(&db, &read_query_values)
-        .await?;
+    let trade = read_query.get_instance::<Trade>(&db).await?;
 
     if data.amount <= trade.bid_price() {
         return Err(Error::ValidationError {
@@ -126,14 +113,19 @@ async fn bid_trade(
     let update_query = QueryBuilder::new(&TRADE_TABLE)
         .query_type(QueryType::Update)
         .columns(&["bid_price", "bought_by", "bought_by_username"])
-        .filter_by(Filter::new("id", Operator::Eq))
-        .filter_by(Filter::new("item_id", Operator::Eq))
-        .filter_by(Filter::new("created_by", Operator::Eq))
+        .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+        .filter_by(Filter::new(
+            "item_id",
+            Operator::Eq,
+            Some(trade.item_id().into()),
+        ))
+        .filter_by(Filter::new(
+            "created_by",
+            Operator::Eq,
+            Some(trade.created_by().into()),
+        ))
         .build();
     let update_query_values = query_values!(
-        "id" => trade_id,
-        "item_id" => trade.item_id(),
-        "created_by" => trade.created_by(),
         "bid_price" => data.amount,
         "bought_by" => data.user_id,
         "bought_by_username" => data.username.to_owned()

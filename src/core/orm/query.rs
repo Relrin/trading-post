@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use cdrs_tokio::frame::{Envelope, TryFromRow};
 use cdrs_tokio::query::{QueryParamsBuilder, QueryValues};
-use cdrs_tokio::types::prelude::Value;
 use cdrs_tokio::types::rows::Row;
 use log::error;
 use serde::Serialize;
@@ -12,14 +13,14 @@ use crate::core::pagination::PaginationParams;
 #[derive(Debug)]
 pub struct Query {
     raw_cql: String,
-    filter_values: QueryValues,
+    query_values: QueryValues,
 }
 
 impl Query {
-    pub fn new(raw_cql: &str, filter_values: QueryValues) -> Self {
+    pub fn new(raw_cql: &str, query_values: QueryValues) -> Self {
         Query {
             raw_cql: raw_cql.to_owned(),
-            filter_values,
+            query_values,
         }
     }
 
@@ -35,8 +36,14 @@ impl Query {
         session: &CassandraSession,
         query_values: &QueryValues,
     ) -> Result<Envelope> {
+        let update_query_values = self.get_merged_query_values(&query_values);
+
+        println!("{:?}", self.raw_cql);
+        println!("{:?}", self.query_values);
+        println!("{:?}", update_query_values);
+
         session
-            .query_with_values(&self.raw_cql, query_values.to_owned())
+            .query_with_values(&self.raw_cql, update_query_values)
             .await
             .map(|env| env)
             .map_err(|err| {
@@ -45,18 +52,12 @@ impl Query {
             })
     }
 
-    pub async fn get_instance<T>(
-        &self,
-        session: &CassandraSession,
-        query_values: &QueryValues,
-    ) -> Result<T>
+    pub async fn get_instance<T>(&self, session: &CassandraSession) -> Result<T>
     where
         T: Serialize + TryFromRow,
     {
-        let all_query_values = self.get_merged_query_values(&query_values);
-
         let rows = session
-            .query_with_values(&self.raw_cql, all_query_values)
+            .query_with_values(&self.raw_cql, self.query_values.to_owned())
             .await
             .map_err(|err| {
                 error!("{}", err);
@@ -87,18 +88,16 @@ impl Query {
     pub async fn get_paginated_entries<T>(
         &self,
         session: &CassandraSession,
-        query_values: &QueryValues,
         pagination_params: &PaginationParams,
     ) -> Result<Vec<T>>
     where
         T: Serialize + TryFromRow,
     {
-        let all_query_values = self.get_merged_query_values(&query_values);
         let mut pager = session.paged(pagination_params.page_size);
         let mut query_pager = pager.query_with_params(
             &self.raw_cql,
             QueryParamsBuilder::new()
-                .with_values(all_query_values)
+                .with_values(self.query_values.to_owned())
                 .build(),
         );
 
@@ -124,21 +123,46 @@ impl Query {
             .collect())
     }
 
-    fn get_merged_query_values(&self, query_values: &QueryValues) -> QueryValues {
-        let mut values = Vec::<Value>::new();
-        self.copy_query_values_into_vec(&mut values, query_values);
-        self.copy_query_values_into_vec(&mut values, &self.filter_values);
+    fn get_merged_query_values(&self, custom_query_values: &QueryValues) -> QueryValues {
+        match custom_query_values {
+            QueryValues::SimpleValues(_) => self.get_merged_simple_values(custom_query_values),
+            QueryValues::NamedValues(_) => self.get_merged_named_values(custom_query_values),
+        }
+    }
+
+    fn get_merged_simple_values(&self, custom_query_values: &QueryValues) -> QueryValues {
+        let mut values = Vec::new();
+
+        match &self.query_values {
+            QueryValues::SimpleValues(vec) => values.extend_from_slice(vec),
+            _ => {}
+        }
+
+        match &custom_query_values {
+            QueryValues::SimpleValues(vec) => values.extend_from_slice(vec),
+            _ => {}
+        }
+
         QueryValues::SimpleValues(values)
     }
 
-    fn copy_query_values_into_vec(&self, container: &mut Vec<Value>, query_values: &QueryValues) {
-        match &query_values {
-            QueryValues::SimpleValues(vec) => container.extend_from_slice(&vec),
-            QueryValues::NamedValues(hash_map) => {
-                for value in hash_map.values() {
-                    container.push(value.clone())
-                }
+    fn get_merged_named_values(&self, custom_query_values: &QueryValues) -> QueryValues {
+        let mut values = HashMap::new();
+
+        match &self.query_values {
+            QueryValues::NamedValues(hm) => {
+                values.extend(hm.into_iter().map(|(k, v)| (k.clone(), v.clone())))
             }
-        };
+            _ => {}
+        }
+
+        match &custom_query_values {
+            QueryValues::NamedValues(hm) => {
+                values.extend(hm.into_iter().map(|(k, v)| (k.clone(), v.clone())))
+            }
+            _ => {}
+        }
+
+        QueryValues::NamedValues(values)
     }
 }
