@@ -91,6 +91,22 @@ where
 }
 
 impl Trade {
+    pub fn item_id(&self) -> Uuid {
+        self.item_id
+    }
+
+    pub fn created_by(&self) -> Uuid {
+        self.created_by
+    }
+
+    pub fn bid_price(&self) -> i64 {
+        self.bid_price
+    }
+
+    pub fn buyout_price(&self) -> i64 {
+        self.buyout_price
+    }
+
     pub fn into_query_values(self) -> QueryValues {
         query_values!(
             "id" => self.id,

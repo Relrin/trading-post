@@ -4,6 +4,7 @@ use actix_web_validator::Query;
 use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::query_values;
 use cdrs_tokio::types::value::Value;
+use serde_json::json;
 use validator::Validate;
 
 use crate::api::auction::filters::{
@@ -84,12 +85,16 @@ async fn create_trade(
 
 #[put("/{id}/bid")]
 async fn bid_trade(
-    id: web::Path<TradeDetail>,
+    detail: web::Path<TradeDetail>,
     data: Json<TradeBid>,
     db: web::Data<CassandraSession>,
 ) -> Result<HttpResponse, Error> {
     data.validate()?;
-    let trade_id = id.into_inner().id;
+    let trade_id = detail.into_inner().id;
+
+    let mut filter_values: Vec<Value> = Vec::new();
+    filter_values.push(false.into());
+    filter_values.push(trade_id.into());
 
     let read_query = QueryBuilder::new(&TRADE_TABLE)
         .query_type(QueryType::Select)
@@ -99,14 +104,46 @@ async fn bid_trade(
         .filter_by(Filter::new("is_deleted", Operator::Eq))
         .allow_filtering(true)
         .build();
-    let read_query_values = query_values!("id" => trade_id, "is_deleted" => false);
+    let read_query_values = QueryValues::SimpleValues(filter_values);
     let trade = read_query
         .get_instance::<Trade>(&db, &read_query_values)
         .await?;
 
-    // check against current bid
-    // check against buyout
-    // update
+    if data.amount <= trade.bid_price() {
+        return Err(Error::ValidationError {
+            message: String::from("Validation error"),
+            errors: json!({"amount": "The bid can't be less that the current price."}),
+        });
+    }
+
+    if data.amount >= trade.buyout_price() {
+        return Err(Error::ValidationError {
+            message: String::from("Validation error"),
+            errors: json!({"amount": "The bid can't be greater that the buyout price."}),
+        });
+    }
+
+    let update_query = QueryBuilder::new(&TRADE_TABLE)
+        .query_type(QueryType::Update)
+        .columns(&["bid_price", "bought_by", "bought_by_username"])
+        .filter_by(Filter::new("id", Operator::Eq))
+        .filter_by(Filter::new("item_id", Operator::Eq))
+        .filter_by(Filter::new("created_by", Operator::Eq))
+        .build();
+    let update_query_values = query_values!(
+        "id" => trade_id,
+        "item_id" => trade.item_id(),
+        "created_by" => trade.created_by(),
+        "bid_price" => data.amount,
+        "bought_by" => data.user_id,
+        "bought_by_username" => data.username.to_owned()
+    );
+    update_query
+        .update(&db, &update_query_values)
+        .await
+        .map_err(|_| Error::CassandraError {
+            message: String::from("Object was not found or doesn't exist."),
+        })?;
 
     Ok(HttpResponse::Ok().finish())
 }

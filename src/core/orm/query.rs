@@ -1,4 +1,4 @@
-use cdrs_tokio::frame::TryFromRow;
+use cdrs_tokio::frame::{Envelope, TryFromRow};
 use cdrs_tokio::query::{QueryParamsBuilder, QueryValues};
 use cdrs_tokio::types::prelude::Value;
 use cdrs_tokio::types::rows::Row;
@@ -28,6 +28,21 @@ impl Query {
             .query_with_values(&self.raw_cql, query_values.to_owned())
             .await
             .expect("Error inserting data");
+    }
+
+    pub async fn update(
+        &self,
+        session: &CassandraSession,
+        query_values: &QueryValues,
+    ) -> Result<Envelope> {
+        session
+            .query_with_values(&self.raw_cql, query_values.to_owned())
+            .await
+            .map(|env| env)
+            .map_err(|err| {
+                error!("{}", err);
+                err.into()
+            })
     }
 
     pub async fn get_instance<T>(
