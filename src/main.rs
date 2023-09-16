@@ -1,4 +1,4 @@
-//mod api;
+mod api;
 mod cli;
 mod multiplex_service;
 //mod core;
@@ -8,15 +8,13 @@ use std::net::SocketAddr;
 
 use axum::{routing::get, Router};
 use structopt::StructOpt;
-use tonic::{Response as TonicResponse, Status};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-//use crate::api::auction::api::get_auction_router;
-//use crate::api::k8s::get_k8s_router;
+use crate::api::auction::api::AuctionServiceImpl;
+use crate::api::k8s::healthcheck;
 use crate::cli::CliOptions;
 use crate::multiplex_service::MultiplexService;
-//use crate::core::error::transform_actix_web_validator_error;
-//use crate::core::orm::session::create_cassandra_session;
+use crate::proto::auction_server::AuctionServer;
 
 mod proto {
     tonic::include_proto!("auction");
@@ -39,7 +37,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     // build the rest service
-    let rest = Router::new().route("/", get(web_root));
+    let rest = Router::new().route("/health", get(healthcheck));
 
     // build the grpc service
     let reflection_service = tonic_reflection::server::Builder::configure()
@@ -48,7 +46,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
     let grpc = tonic::transport::Server::builder()
         .add_service(reflection_service)
-        .add_service(GreeterServer::new(GrpcServiceImpl::default()))
+        .add_service(AuctionServer::new(AuctionServiceImpl::default()))
         .into_service();
 
     // combine them into one service

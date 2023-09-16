@@ -17,6 +17,9 @@ use crate::core::orm::session::CassandraSession;
 use crate::core::pagination::{PaginatedResponse, PaginationParams};
 use crate::models::trade::{CreateTrade, Trade, EMPTY_UUID, TRADE_ALL_COLUMNS, TRADE_TABLE};
 
+#[derive(Default)]
+pub struct AuctionServiceImpl {}
+
 pub fn get_auction_router() -> Scope {
     scope("/api/v1/auction/trades")
         .service(list_trades)
