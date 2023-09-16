@@ -1,5 +1,6 @@
 //mod api;
 mod cli;
+mod multiplex_service;
 //mod core;
 //mod models;
 
@@ -11,6 +12,12 @@ use structopt::StructOpt;
 use crate::cli::CliOptions;
 //use crate::core::error::transform_actix_web_validator_error;
 //use crate::core::orm::session::create_cassandra_session;
+
+mod proto {
+    tonic::include_proto!("auction");
+    pub(crate) const AUCTION_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("auction_descriptor");
+}
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
