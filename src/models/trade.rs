@@ -25,7 +25,8 @@ lazy_static! {
         "expired_at",
         "is_deleted",
     ];
-    static ref EMPTY_UUID: Uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
+    pub static ref EMPTY_UUID: Uuid =
+        Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
 }
 
 #[derive(Serialize, IntoCdrsValue, TryFromRow, Debug)]
@@ -105,6 +106,10 @@ impl Trade {
 
     pub fn buyout_price(&self) -> i64 {
         self.buyout_price
+    }
+
+    pub fn bought_by(&self) -> Uuid {
+        self.bought_by
     }
 
     pub fn into_query_values(self) -> QueryValues {

@@ -1,5 +1,5 @@
 use actix_web::web::{scope, Json};
-use actix_web::{get, post, put, web, HttpResponse, Scope};
+use actix_web::{delete, get, post, put, web, HttpResponse, Scope};
 use actix_web_validator::Query;
 use cdrs_tokio::query_values;
 use chrono::Utc;
@@ -9,13 +9,13 @@ use validator::Validate;
 use crate::api::auction::filters::{
     FilterParams, ItemBidPriceRangeFilter, ItemBuyoutPriceRangeFilter, ItemNameFilter,
 };
-use crate::api::auction::schemas::{TradeBid, TradeBuyout, TradeDetail};
+use crate::api::auction::schemas::{TradeBid, TradeBuyout, TradeDelete, TradeDetail};
 use crate::core::error::Error;
 use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
 use crate::core::pagination::{PaginatedResponse, PaginationParams};
-use crate::models::trade::{CreateTrade, Trade, TRADE_ALL_COLUMNS, TRADE_TABLE};
+use crate::models::trade::{CreateTrade, Trade, EMPTY_UUID, TRADE_ALL_COLUMNS, TRADE_TABLE};
 
 pub fn get_auction_router() -> Scope {
     scope("/api/v1/auction/trades")
@@ -23,6 +23,7 @@ pub fn get_auction_router() -> Scope {
         .service(create_trade)
         .service(bid_trade)
         .service(buyout_trade)
+        .service(delete_trade)
 }
 
 #[get("")]
@@ -205,6 +206,69 @@ async fn buyout_trade(
 
     // TODO: Return currency to the latest bidder
     // TODO: Add the item to buyer's inventory
+
+    Ok(HttpResponse::Ok().finish())
+}
+
+#[delete("/{id}")]
+async fn delete_trade(
+    detail: web::Path<TradeDetail>,
+    data: Json<TradeDelete>,
+    db: web::Data<CassandraSession>,
+) -> Result<HttpResponse, Error> {
+    let trade_id = detail.into_inner().id;
+
+    let read_query = QueryBuilder::new(&TRADE_TABLE)
+        .query_type(QueryType::Select)
+        .columns(&TRADE_ALL_COLUMNS)
+        .limit(1)
+        .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+        .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
+        .allow_filtering(true)
+        .build();
+    let trade = read_query.get_instance::<Trade>(&db).await?;
+
+    if trade.bought_by() != *EMPTY_UUID {
+        return Err(Error::ValidationError {
+            message: String::from("Validation error"),
+            errors: json!({"amount": "The trade can't be deleted when someone did a bid."}),
+        });
+    }
+
+    if data.user_id != trade.created_by() {
+        return Err(Error::ValidationError {
+            message: String::from("Validation error"),
+            errors: json!({"amount": "Only the owner can delete the trade."}),
+        });
+    }
+
+    let delete_query = QueryBuilder::new(&TRADE_TABLE)
+        .query_type(QueryType::Update)
+        .columns(&["is_deleted"])
+        .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+        .filter_by(Filter::new(
+            "item_id",
+            Operator::Eq,
+            Some(trade.item_id().into()),
+        ))
+        .filter_by(Filter::new(
+            "created_by",
+            Operator::Eq,
+            Some(trade.created_by().into()),
+        ))
+        .build();
+    let delete_query_values = query_values!(
+        "is_deleted" => true,
+        "expired_at" => Utc::now()
+    );
+    delete_query
+        .update(&db, &delete_query_values)
+        .await
+        .map_err(|_| Error::CassandraError {
+            message: String::from("The trade was not found."),
+        })?;
+
+    // TODO: Return an item to an inventory
 
     Ok(HttpResponse::Ok().finish())
 }
