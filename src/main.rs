@@ -4,12 +4,17 @@ mod multiplex_service;
 //mod core;
 //mod models;
 
-//use actix_web::{middleware, web, App, HttpServer};
+use std::net::SocketAddr;
+
+use axum::{routing::get, Router};
 use structopt::StructOpt;
+use tonic::{Response as TonicResponse, Status};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 //use crate::api::auction::api::get_auction_router;
 //use crate::api::k8s::get_k8s_router;
 use crate::cli::CliOptions;
+use crate::multiplex_service::MultiplexService;
 //use crate::core::error::transform_actix_web_validator_error;
 //use crate::core::orm::session::create_cassandra_session;
 
@@ -24,23 +29,37 @@ async fn main() -> std::io::Result<()> {
     let opts = CliOptions::from_args();
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    // let cassandra_session = create_cassandra_session(&opts).await;
-    //
-    // HttpServer::new(move || {
-    //     App::new()
-    //         .wrap(middleware::Logger::default().log_target("http_log"))
-    //         .app_data(web::JsonConfig::default().limit(MAX_JSON_SIZE))
-    //         .app_data(web::Data::new(cassandra_session.clone()))
-    //         .app_data(
-    //             actix_web_validator::QueryConfig::default()
-    //                 .error_handler(|err, req| transform_actix_web_validator_error(err, req)),
-    //         )
-    //         .service(get_auction_router())
-    //         .service(get_k8s_router())
-    // })
-    // .bind((opts.host, opts.port))?
-    // .run()
-    // .await
+    // initialize tracing
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| "example_rest_grpc_multiplex=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
+    // build the rest service
+    let rest = Router::new().route("/", get(web_root));
+
+    // build the grpc service
+    let reflection_service = tonic_reflection::server::Builder::configure()
+        .register_encoded_file_descriptor_set(proto::AUCTION_DESCRIPTOR_SET)
+        .build()
+        .unwrap();
+    let grpc = tonic::transport::Server::builder()
+        .add_service(reflection_service)
+        .add_service(GreeterServer::new(GrpcServiceImpl::default()))
+        .into_service();
+
+    // combine them into one service
+    let service = MultiplexService::new(rest, grpc);
+
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    tracing::debug!("listening on {}", addr);
+    hyper::Server::bind(&addr)
+        .serve(tower::make::Shared::new(service))
+        .await
+        .unwrap();
 
     Ok(())
 }
