@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
-use validator::Validate;
 
-#[derive(Debug, Validate, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq)]
 pub struct PaginationParams {
-    #[validate(range(min = 1))]
+    //#[validate(range(min = 1))]
     #[serde(default = "get_default_page")]
     pub(crate) page: i32,
-    #[validate(range(min = 10))]
+    //#[validate(range(min = 10))]
     #[serde(default = "get_default_page_size")]
     pub(crate) page_size: i32,
 }

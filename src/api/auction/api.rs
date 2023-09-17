@@ -1,22 +1,21 @@
 //use cdrs_tokio::query_values;
 //use chrono::Utc;
-//use serde_json::json;
-//use validator::Validate;
+use tonic::{Request, Response, Status};
 
-use crate::api::auction::filters::{
-    FilterParams, ItemBidPriceRangeFilter, ItemBuyoutPriceRangeFilter, ItemNameFilter,
-};
-use crate::api::auction::schemas::{TradeBid, TradeBuyout, TradeDelete, TradeDetail};
-use crate::core::error::Error;
-use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
+//use crate::api::auction::filters::{
+//    FilterParams, ItemBidPriceRangeFilter, ItemBuyoutPriceRangeFilter, ItemNameFilter,
+//};
+//use crate::core::error::Error;
+//use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
-use crate::core::pagination::{PaginatedResponse, PaginationParams};
+//use crate::core::pagination::{PaginatedResponse, PaginationParams};
 use crate::models::trade::{CreateTrade, Trade, EMPTY_UUID, TRADE_ALL_COLUMNS, TRADE_TABLE};
-
-mod proto {
-    tonic::include_proto!("auction");
-}
+use crate::proto::{
+    auction_server::Auction, BidRequest, BidResponse, BuyoutRequest, BuyoutResponse,
+    CancelTradeRequest, CancelTradeResponse, CreateTradeRequest, CreateTradeResponse,
+    ListTradesRequest, ListTradesResponse,
+};
 
 pub struct AuctionServiceImpl {
     db: CassandraSession,
@@ -28,41 +27,87 @@ impl AuctionServiceImpl {
     }
 }
 
-async fn list_trades(
-    db: web::Data<CassandraSession>,
-    pagination: Query<PaginationParams>,
-    filters: Query<FilterParams>,
-) -> Result<HttpResponse, Error> {
-    let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
-    let item_bid_price_filter = ItemBidPriceRangeFilter::new(&filters).into_custom_filter();
-    let item_buyout_price_filter = ItemBuyoutPriceRangeFilter::new(&filters).into_custom_filter();
+#[tonic::async_trait]
+impl Auction for AuctionServiceImpl {
+    async fn list_trades(
+        &self,
+        request: Request<ListTradesRequest>,
+    ) -> Result<Response<ListTradesResponse>, Status> {
+        todo!()
+    }
 
-    let backend_filters: Vec<&CustomFilter> = vec![
-        &item_name_filter,
-        &item_bid_price_filter,
-        &item_buyout_price_filter,
-    ]
-    .iter()
-    .filter(|f| f.is_some())
-    .map(|f| f.as_ref().unwrap())
-    .collect();
+    async fn create_trade(
+        &self,
+        request: Request<CreateTradeRequest>,
+    ) -> Result<Response<CreateTradeResponse>, Status> {
+        let data = CreateTrade::try_from(request.into_inner())?;
+        //data.validate()?;
 
-    let query = QueryBuilder::new(&TRADE_TABLE)
-        .query_type(QueryType::Select)
-        .columns(&TRADE_ALL_COLUMNS)
-        .allow_filtering(true)
-        .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
-        .custom_filters(&backend_filters)
-        .build();
+        let trade = Trade::from(data.into_inner());
+        let query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Insert)
+            .columns(&TRADE_ALL_COLUMNS)
+            .build();
+        let query_values = trade.into_query_values();
+        query.insert(&self.db, &query_values).await;
 
-    let objects = query
-        .get_paginated_entries::<Trade>(&db, &pagination)
-        .await?;
+        Ok(Response::new(CreateTradeResponse {}))
+    }
 
-    let paginated_response = PaginatedResponse::new(pagination.page, pagination.page_size, objects);
-    Ok(HttpResponse::Ok().json(paginated_response))
+    async fn bid(&self, request: Request<BidRequest>) -> Result<Response<BidResponse>, Status> {
+        todo!()
+    }
+
+    async fn buyout(
+        &self,
+        request: Request<BuyoutRequest>,
+    ) -> Result<Response<BuyoutResponse>, Status> {
+        todo!()
+    }
+
+    async fn cancel_trade(
+        &self,
+        request: Request<CancelTradeRequest>,
+    ) -> Result<Response<CancelTradeResponse>, Status> {
+        todo!()
+    }
 }
 
+// async fn list_trades(
+//     db: web::Data<CassandraSession>,
+//     pagination: Query<PaginationParams>,
+//     filters: Query<FilterParams>,
+// ) -> Result<HttpResponse, Error> {
+//     let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
+//     let item_bid_price_filter = ItemBidPriceRangeFilter::new(&filters).into_custom_filter();
+//     let item_buyout_price_filter = ItemBuyoutPriceRangeFilter::new(&filters).into_custom_filter();
+//
+//     let backend_filters: Vec<&CustomFilter> = vec![
+//         &item_name_filter,
+//         &item_bid_price_filter,
+//         &item_buyout_price_filter,
+//     ]
+//     .iter()
+//     .filter(|f| f.is_some())
+//     .map(|f| f.as_ref().unwrap())
+//     .collect();
+//
+//     let query = QueryBuilder::new(&TRADE_TABLE)
+//         .query_type(QueryType::Select)
+//         .columns(&TRADE_ALL_COLUMNS)
+//         .allow_filtering(true)
+//         .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
+//         .custom_filters(&backend_filters)
+//         .build();
+//
+//     let objects = query
+//         .get_paginated_entries::<Trade>(&db, &pagination)
+//         .await?;
+//
+//     let paginated_response = PaginatedResponse::new(pagination.page, pagination.page_size, objects);
+//     Ok(HttpResponse::Ok().json(paginated_response))
+// }
+//
 // #[post("")]
 // async fn create_trade(
 //     data: Json<CreateTrade>,

@@ -1,13 +1,11 @@
+use crate::proto::CreateTradeRequest;
 use cdrs_tokio::query::QueryValues;
 use cdrs_tokio::query_values;
 use cdrs_tokio_helpers_derive::{IntoCdrsValue, TryFromRow};
 use chrono::{DateTime, Days, Duration, Utc};
-use go_parse_duration::parse_duration;
 use lazy_static::lazy_static;
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserializer, Serialize};
 use uuid::Uuid;
-use validator::{Validate, ValidationError};
 
 lazy_static! {
     pub static ref TRADE_TABLE: &'static str = "trading_post.trade";
@@ -42,54 +40,36 @@ pub struct Trade {
     bought_by: Uuid,
     bought_by_username: String,
     expired_at: DateTime<Utc>,
-    #[serde(skip)]
     is_deleted: bool,
 }
 
-#[derive(Debug, PartialEq, Deserialize, Validate)]
-#[validate(schema(function = "validate_create_trade", skip_on_field_errors = false))]
+#[derive(Debug, PartialEq)]
 pub struct CreateTrade {
     item_id: Uuid,
-    #[validate(length(min = 1))]
-    item_name: String,
-    #[validate(range(min = 0))]
-    bid_price: i64,
-    buyout_price: Option<i64>,
+    item_name: String, //  #[validate(length(min = 1))]
+    bid_price: i64,    //  #[validate(range(min = 0))]
+    buyout_price: i64,
     created_by: Uuid,
-    #[validate(length(min = 1))]
-    created_by_username: String,
-    #[serde(deserialize_with = "parse_expire_in")]
-    expire_in: Option<Duration>,
+    created_by_username: String, // #[validate(length(min = 1))]
+    expire_in: i64,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Debug)]
 pub struct TradeOperation {
-    #[validate(range(min = 1))]
-    price: i64,
+    price: i64, // #[validate(range(min = 1))]
 }
 
-fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
-    if let Some(buyout_price) = instance.buyout_price {
-        if buyout_price > 0 && instance.bid_price > buyout_price {
-            return Err(ValidationError::new(
-                "The bid can't be greater than the buyout price",
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-fn parse_expire_in<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let input = String::deserialize(deserializer)?;
-    match parse_duration(&input) {
-        Ok(duration_ns) => Ok(Some(Duration::nanoseconds(duration_ns))),
-        Err(_) => Err(Error::custom("Duration format is invalid")),
-    }
-}
+// fn validate_create_trade(instance: &CreateTrade) -> Result<(), ValidationError> {
+//     if let Some(buyout_price) = instance.buyout_price {
+//         if buyout_price > 0 && instance.bid_price > buyout_price {
+//             return Err(ValidationError::new(
+//                 "The bid can't be greater than the buyout price",
+//             ));
+//         }
+//     }
+//
+//     Ok(())
+// }
 
 impl Trade {
     pub fn item_id(&self) -> Uuid {
@@ -130,6 +110,14 @@ impl Trade {
     }
 }
 
+impl TryFrom<CreateTradeRequest> for CreateTrade {
+    type Error = crate::core::error::Error;
+
+    fn try_from(value: CreateTradeRequest) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
 impl From<CreateTrade> for Trade {
     fn from(instance: CreateTrade) -> Self {
         let buyout_price = match instance.buyout_price {
@@ -144,7 +132,7 @@ impl From<CreateTrade> for Trade {
             None => created_at - Days::new(1),
         };
 
-        Trade {
+        Self {
             id: Uuid::new_v4(),
             item_id: instance.item_id,
             item_name: instance.item_name,

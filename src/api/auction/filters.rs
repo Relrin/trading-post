@@ -1,9 +1,8 @@
 use crate::core::orm::filter::Operator::{Gte, LikeContains, Lte};
 use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter};
 use serde::{Deserialize, Serialize};
-use validator::Validate;
 
-#[derive(Debug, Validate, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct FilterParams {
     pub(crate) name: Option<String>,
     pub(crate) min_price: Option<i64>,
