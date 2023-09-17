@@ -6,11 +6,16 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Display, Error)]
 pub enum Error {
-    //#[display(fmt = "{{\"detail\": \"{0}\", \"errors\": {1}}}", message, errors)]
-    //ValidationError { message: String, errors: Value },
-    #[display(fmt = "{{\"detail\": \"{0}\"}}", message)]
+    #[display(fmt = "{{\"detail\": \"{0}\", \"errors\": {1}}}", message, errors)]
+    ValidationError {
+        message: String,
+        errors: Vec<(String, String)>,
+    },
+    #[display(fmt = "{{\"detail\": \"{0}\"", message)]
     CassandraError { message: String },
 }
+
+// TODO: Implement Error to gRPC Status convert
 
 // impl ResponseError for Error {
 //     fn status_code(&self) -> StatusCode {

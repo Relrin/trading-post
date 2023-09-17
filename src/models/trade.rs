@@ -110,13 +110,8 @@ impl Trade {
     }
 }
 
-impl TryFrom<CreateTradeRequest> for CreateTrade {
-    type Error = crate::core::error::Error;
-
-    fn try_from(value: CreateTradeRequest) -> Result<Self, Self::Error> {
-        todo!()
-    }
-}
+// TODO: Implement validation for create trade
+// TODO: impl From<CreateTradeRequest> for Trade ...
 
 impl From<CreateTrade> for Trade {
     fn from(instance: CreateTrade) -> Self {
