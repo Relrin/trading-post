@@ -7,6 +7,7 @@ mod multiplex_service;
 use std::net::SocketAddr;
 
 use axum::{routing::get, Router};
+use log::info;
 use structopt::StructOpt;
 
 use crate::api::auction::api::AuctionServiceImpl;
@@ -46,8 +47,10 @@ async fn main() -> std::io::Result<()> {
     // combine them into one service
     let service = MultiplexService::new(rest, grpc);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    hyper::Server::bind(&addr)
+    info!("Listening {0}:{1}...", opts.host, opts.port);
+    let addr = format!("{}:{}", opts.host, opts.port);
+    let socket = &addr.parse().unwrap();
+    hyper::Server::bind(socket)
         .serve(tower::make::Shared::new(service))
         .await
         .unwrap();

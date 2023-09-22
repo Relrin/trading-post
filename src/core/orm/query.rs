@@ -57,24 +57,20 @@ impl Query {
             .await
             .map_err(|err| {
                 error!("{}", err);
-                Error::CassandraError {
-                    message: String::from("Object was not found or doesn't exist."),
-                }
+                Error::CassandraError("Object was not found or doesn't exist.".to_string())
             })
             .map(|envelope| envelope.response_body())
             .map_err(|err| {
                 error!("{}", err);
-                Error::CassandraError {
-                    message: String::from("Can't read the response body."),
-                }
+                Error::CassandraError("Can't read the response body.".to_string())
             })
             .map(|response_body| response_body.unwrap().into_rows())?
             .unwrap_or(vec![]);
 
         if rows.len() == 0 {
-            return Err(Error::CassandraError {
-                message: String::from("Object was not found or doesn't exist."),
-            });
+            return Err(Error::CassandraError(
+                "Object was not found or doesn't exist.".to_string(),
+            ));
         }
 
         let row = rows.first().unwrap().to_owned();

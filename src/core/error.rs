@@ -1,52 +1,58 @@
 use cdrs_tokio::error::Error as CdrsError;
-use derive_more::{Display, Error};
-use log::error;
+use derive_more::Display;
+use tonic::{Code, Status};
+use tonic_types::{ErrorDetails, StatusExt};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Display, Error)]
+#[derive(Debug, Display)]
 pub enum Error {
-    #[display(fmt = "{{\"detail\": \"{0}\", \"errors\": {1}}}", message, errors)]
+    #[display(fmt = "Validation error for the `{0}` field: {1}", field, message)]
     ValidationError {
+        field: String,
         message: String,
-        errors: Vec<(String, String)>,
     },
-    #[display(fmt = "{{\"detail\": \"{0}\"", message)]
-    CassandraError { message: String },
+    CassandraError(String),
 }
 
-// TODO: Implement Error to gRPC Status convert
+impl Error {
+    fn code(&self) -> Code {
+        match self {
+            Error::ValidationError { .. } => Code::InvalidArgument,
+            Error::CassandraError(_) => Code::Internal,
+        }
+    }
 
-// impl ResponseError for Error {
-//     fn status_code(&self) -> StatusCode {
-//         match *self {
-//             Error::ValidationError { .. } => StatusCode::BAD_REQUEST,
-//             Error::CassandraError { .. } => StatusCode::BAD_REQUEST,
-//         }
-//     }
-//
-//     fn error_response(&self) -> HttpResponse {
-//         HttpResponse::build(self.status_code())
-//             .insert_header(ContentType::json())
-//             .body(self.to_string())
-//     }
-// }
+    fn message(&self) -> String {
+        self.code().description().to_string()
+    }
 
-// impl From<ValidationErrors> for Error {
-//     fn from(value: ValidationErrors) -> Self {
-//         Error::ValidationError {
-//             message: String::from("Validation error"),
-//             errors: json!(value.errors()),
-//         }
-//     }
-// }
+    fn details(&self) -> ErrorDetails {
+        let mut details = ErrorDetails::new();
+
+        match self {
+            Error::ValidationError { field, message } => {
+                details.add_bad_request_violation(field, message);
+            }
+            _ => {}
+        };
+
+        details
+    }
+}
 
 impl From<CdrsError> for Error {
-    fn from(value: CdrsError) -> Self {
-        error!("{:?}", value);
+    fn from(_: CdrsError) -> Self {
+        Error::CassandraError("Internal error".to_string())
+    }
+}
 
-        Error::CassandraError {
-            message: String::from("Internal error"),
-        }
+impl From<Error> for Status {
+    fn from(err: Error) -> Self {
+        let code = err.code();
+        let message = err.message();
+        let details = err.details();
+
+        Status::with_error_details(code, message, details)
     }
 }

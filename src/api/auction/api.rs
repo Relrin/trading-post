@@ -10,7 +10,8 @@ use tonic::{Request, Response, Status};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
 //use crate::core::pagination::{PaginatedResponse, PaginationParams};
-use crate::models::trade::{CreateTrade, Trade, EMPTY_UUID, TRADE_ALL_COLUMNS, TRADE_TABLE};
+use crate::core::validation::Validate;
+use crate::models::trade::{Trade, EMPTY_UUID, TRADE_ALL_COLUMNS, TRADE_TABLE};
 use crate::proto::{
     auction_server::Auction, BidRequest, BidResponse, BuyoutRequest, BuyoutResponse,
     CancelTradeRequest, CancelTradeResponse, CreateTradeRequest, CreateTradeResponse,
@@ -40,16 +41,18 @@ impl Auction for AuctionServiceImpl {
         &self,
         request: Request<CreateTradeRequest>,
     ) -> Result<Response<CreateTradeResponse>, Status> {
-        let data = CreateTrade::try_from(request.into_inner())?;
+        request.validate()?;
+
+        //let data = CreateTrade::try_from(request.into_inner())?;
         //data.validate()?;
 
-        let trade = Trade::from(data.into_inner());
-        let query = QueryBuilder::new(&TRADE_TABLE)
-            .query_type(QueryType::Insert)
-            .columns(&TRADE_ALL_COLUMNS)
-            .build();
-        let query_values = trade.into_query_values();
-        query.insert(&self.db, &query_values).await;
+        // let trade = Trade::from(data.into_inner());
+        // let query = QueryBuilder::new(&TRADE_TABLE)
+        //     .query_type(QueryType::Insert)
+        //     .columns(&TRADE_ALL_COLUMNS)
+        //     .build();
+        // let query_values = trade.into_query_values();
+        // query.insert(&self.db, &query_values).await;
 
         Ok(Response::new(CreateTradeResponse {}))
     }
