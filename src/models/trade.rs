@@ -8,7 +8,7 @@ use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::proto::CreateTradeRequest;
+use crate::proto::{CreateTradeRequest, Trade as TradeDetail};
 
 lazy_static! {
     pub static ref TRADE_TABLE: &'static str = "trading_post.trade";
@@ -112,6 +112,30 @@ impl From<CreateTradeRequest> for Trade {
             bought_by_username: String::new(),
             expired_at,
             is_deleted: false,
+        }
+    }
+}
+
+impl From<&Trade> for TradeDetail {
+    fn from(instance: &Trade) -> Self {
+        let created_at = instance.created_at.timestamp();
+        let expired_at = match instance.expired_at > instance.created_at {
+            true => Some(instance.expired_at.timestamp()),
+            false => None,
+        };
+
+        Self {
+            id: instance.id.to_string(),
+            item_id: instance.item_id.to_string(),
+            item_name: instance.item_name.clone(),
+            bid_price: instance.bid_price,
+            buyout_price: instance.buyout_price,
+            created_at,
+            created_by: instance.created_by.to_string(),
+            created_by_username: instance.created_by_username.clone(),
+            bought_by: instance.bought_by.to_string(),
+            bought_by_username: instance.bought_by_username.to_string(),
+            expired_at,
         }
     }
 }

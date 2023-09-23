@@ -1,15 +1,6 @@
 use crate::core::orm::filter::Operator::{Gte, LikeContains, Lte};
 use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub struct FilterParams {
-    pub(crate) name: Option<String>,
-    pub(crate) min_price: Option<i64>,
-    pub(crate) max_price: Option<i64>,
-    pub(crate) min_buyout_price: Option<i64>,
-    pub(crate) max_buyout_price: Option<i64>,
-}
+use crate::proto::FilterParams;
 
 pub struct ItemNameFilter<'a> {
     params: &'a FilterParams,
@@ -23,7 +14,7 @@ impl<'a> ItemNameFilter<'a> {
 
 impl<'a> IntoCustomFilter<'a> for ItemNameFilter<'a> {
     fn into_custom_filter(self) -> Option<CustomFilter<'a>> {
-        match &self.params.name {
+        match &self.params.item_name {
             Some(name) => {
                 let search_pattern = format!("%{0}%", name);
                 let instance = CustomFilter::new(vec![Filter::new(

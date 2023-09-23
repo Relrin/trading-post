@@ -1,36 +1,21 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct PaginationParams {
-    //#[validate(range(min = 1))]
-    #[serde(default = "get_default_page")]
     pub(crate) page: i32,
-    //#[validate(range(min = 10))]
-    #[serde(default = "get_default_page_size")]
     pub(crate) page_size: i32,
 }
 
-fn get_default_page() -> i32 {
-    1
-}
+impl PaginationParams {
+    pub fn new(page: i32, page_size: i32) -> Self {
+        let page = match page {
+            value if value < 0 => 1,
+            _ => page,
+        };
 
-fn get_default_page_size() -> i32 {
-    10
-}
+        let page_size = match page_size {
+            value if value < 0 => 1,
+            _ => page_size,
+        };
 
-#[derive(Serialize, Debug)]
-pub struct PaginatedResponse<T> {
-    page: i32,
-    page_size: i32,
-    objects: Vec<T>,
-}
-
-impl<T> PaginatedResponse<T> {
-    pub fn new(page: i32, page_size: i32, objects: Vec<T>) -> Self {
-        Self {
-            page,
-            page_size,
-            objects,
-        }
+        Self { page, page_size }
     }
 }
