@@ -43,16 +43,13 @@ impl Auction for AuctionServiceImpl {
     ) -> Result<Response<CreateTradeResponse>, Status> {
         request.validate()?;
 
-        //let data = CreateTrade::try_from(request.into_inner())?;
-        //data.validate()?;
-
-        // let trade = Trade::from(data.into_inner());
-        // let query = QueryBuilder::new(&TRADE_TABLE)
-        //     .query_type(QueryType::Insert)
-        //     .columns(&TRADE_ALL_COLUMNS)
-        //     .build();
-        // let query_values = trade.into_query_values();
-        // query.insert(&self.db, &query_values).await;
+        let trade = Trade::from(request.into_inner());
+        let query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Insert)
+            .columns(&TRADE_ALL_COLUMNS)
+            .build();
+        let query_values = trade.into_query_values();
+        query.insert(&self.db, &query_values).await;
 
         Ok(Response::new(CreateTradeResponse {}))
     }
