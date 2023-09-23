@@ -3,7 +3,7 @@ use cdrs_tokio::query_values;
 use cdrs_tokio_helpers_derive::{IntoCdrsValue, TryFromRow};
 use chrono::{DateTime, Days, Utc};
 use lazy_static::lazy_static;
-use serde::{Deserializer, Serialize};
+use serde::Serialize;
 use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;

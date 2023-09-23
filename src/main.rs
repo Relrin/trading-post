@@ -4,8 +4,6 @@ mod core;
 mod models;
 mod multiplex_service;
 
-use std::net::SocketAddr;
-
 use axum::{routing::get, Router};
 use log::info;
 use structopt::StructOpt;

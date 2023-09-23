@@ -111,41 +111,6 @@ impl Auction for AuctionServiceImpl {
     }
 }
 
-// async fn list_trades(
-//     db: web::Data<CassandraSession>,
-//     pagination: Query<PaginationParams>,
-//     filters: Query<FilterParams>,
-// ) -> Result<HttpResponse, Error> {
-//     let item_name_filter = ItemNameFilter::new(&filters).into_custom_filter();
-//     let item_bid_price_filter = ItemBidPriceRangeFilter::new(&filters).into_custom_filter();
-//     let item_buyout_price_filter = ItemBuyoutPriceRangeFilter::new(&filters).into_custom_filter();
-//
-//     let backend_filters: Vec<&CustomFilter> = vec![
-//         &item_name_filter,
-//         &item_bid_price_filter,
-//         &item_buyout_price_filter,
-//     ]
-//     .iter()
-//     .filter(|f| f.is_some())
-//     .map(|f| f.as_ref().unwrap())
-//     .collect();
-//
-//     let query = QueryBuilder::new(&TRADE_TABLE)
-//         .query_type(QueryType::Select)
-//         .columns(&TRADE_ALL_COLUMNS)
-//         .allow_filtering(true)
-//         .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
-//         .custom_filters(&backend_filters)
-//         .build();
-//
-//     let objects = query
-//         .get_paginated_entries::<Trade>(&db, &pagination)
-//         .await?;
-//
-//     let paginated_response = PaginatedResponse::new(pagination.page, pagination.page_size, objects);
-//     Ok(HttpResponse::Ok().json(paginated_response))
-// }
-//
 // #[put("/{id}/bid")]
 // async fn bid_trade(
 //     detail: web::Path<TradeDetail>,
