@@ -1,16 +1,9 @@
-use futures::FutureExt;
 use std::{
-    collections::HashMap,
     net::IpAddr,
     net::{Ipv4Addr, SocketAddr},
     sync::Arc,
 };
 
-// use cdrs_tokio::authenticators::StaticPasswordAuthenticatorProvider;
-// use cdrs_tokio::cluster::session::{Session, SessionBuilder, TcpSessionBuilder};
-// use cdrs_tokio::cluster::{NodeTcpConfigBuilder, TcpConnectionManager};
-// use cdrs_tokio::load_balancing::RoundRobinLoadBalancingStrategy;
-// use cdrs_tokio::transport::TransportTcp;
 use cdrs_tokio::cluster::connection_pool::ConnectionPoolConfig;
 use cdrs_tokio::cluster::session::{
     NodeDistanceEvaluatorWrapper, ReconnectionPolicyWrapper, RetryPolicyWrapper,
@@ -29,12 +22,11 @@ use cdrs_tokio::{
     cluster::{GenericClusterConfig, TcpConnectionManager},
     error::Result,
     load_balancing::RoundRobinLoadBalancingStrategy,
-    query::*,
-    query_values,
     retry::DefaultRetryPolicy,
     transport::TransportTcp,
     types::prelude::*,
 };
+use futures::FutureExt;
 use tokio::sync::mpsc::Sender;
 
 use crate::cli::CliOptions;
@@ -50,41 +42,29 @@ pub type CassandraSession = Arc<
 >;
 
 pub async fn create_cassandra_session(opts: &CliOptions) -> CassandraSession {
-    let address = format!("{0}:{1}", opts.cassandra_host, opts.cassandra_port);
-    let socket_addr = address.parse().unwrap();
     let authenticator = Arc::new(StaticPasswordAuthenticatorProvider::new(
         opts.cassandra_user.clone(),
         opts.cassandra_password.clone(),
     ));
-    // let cluster_config = NodeTcpConfigBuilder::new()
-    //     .with_contact_point(address.into())
-    //     .with_authenticator_provider(Arc::new(auth))
-    //     .build()
-    //     .await
-    //     .unwrap();
-    // let lb = RoundRobinLoadBalancingStrategy::new();
-    // let session = TcpSessionBuilder::new(lb, cluster_config)
-    //     .build()
-    //     .await
-    //     .unwrap();
-
     let mask = Ipv4Addr::new(255, 255, 255, 0);
-    let actual = socket_addr;
-    let reconnection_policy = Arc::new(ConstantReconnectionPolicy::default());
-
+    let actual = Ipv4Addr::new(127, 0, 0, 0);
     let cluster_config = VirtualClusterConfig {
         authenticator,
         mask,
         actual,
         version: Version::V5,
     };
-    let nodes = [];
-    let load_balancing = RoundRobinLoadBalancingStrategy::new();
+    let nodes = opts
+        .cassandra_nodes
+        .split(',')
+        .filter_map(|address| address.parse().ok())
+        .collect::<Vec<SocketAddr>>();
+    let reconnection_policy = Arc::new(ConstantReconnectionPolicy::default());
 
     let session = cdrs_tokio::cluster::connect_generic(
         &cluster_config,
         nodes,
-        load_balancing,
+        RoundRobinLoadBalancingStrategy::new(),
         RetryPolicyWrapper(Box::<DefaultRetryPolicy>::default()),
         ReconnectionPolicyWrapper(reconnection_policy),
         NodeDistanceEvaluatorWrapper(Box::<AllLocalNodeDistanceEvaluator>::default()),

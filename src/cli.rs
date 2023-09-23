@@ -4,7 +4,7 @@ use structopt::StructOpt;
 #[structopt(
     name = "TradingPost",
     version = "0.1.0",
-    about = "Trading post microservice",
+    about = "Trading post microservice"
 )]
 pub struct CliOptions {
     #[structopt(
@@ -23,20 +23,12 @@ pub struct CliOptions {
     pub port: u16,
 
     #[structopt(
-        long = "cassandra-host",
-        help = "Cassandra host",
-        default_value = "127.0.0.1",
-        env = "CASSANDRA_HOST"
+        long = "cassandra-nodes",
+        help = "Cassandra nodes",
+        default_value = "127.0.0.1:9042",
+        env = "CASSANDRA_NODES"
     )]
-    pub cassandra_host: String,
-
-    #[structopt(
-        long = "cassandra-port",
-        help = "Cassandra listened port",
-        default_value = "9042",
-        env = "CASSANDRA_PORT"
-    )]
-    pub cassandra_port: u16,
+    pub cassandra_nodes: String,
 
     #[structopt(
         long = "cassandra-user",
