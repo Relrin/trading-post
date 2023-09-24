@@ -85,32 +85,38 @@ message Trade {
 }
 
 message BidRequest {
+  // The unique ID of the trade
+  string id = 1;
   // The account / character UUID
-  string user_id = 1;
+  string user_id = 2;
   // The human-readable player's name representation
-  string username = 2;
+  string username = 3;
   // The amount of currency used for the bid operation.
-  int64 amount = 3;
+  int64 amount = 4;
 }
 
 message BidResponse {
 }
 
 message BuyoutRequest {
+  // The unique ID of the trade
+  string id = 1;
   // The account / character UUID
-  string user_id = 1;
+  string user_id = 2;
   // The human-readable player's name representation
-  string username = 2;
+  string username = 3;
   // The amount of currency used for the buyout operation.
-  int64 amount = 3;
+  int64 amount = 4;
 }
 
 message BuyoutResponse {
 }
 
 message CancelTradeRequest {
+  // The unique ID of the trade
+  string id = 1;
   // The initiator that requested to cancel / delete a trade.
-  string user_id = 1;
+  string user_id = 2;
 }
 
 message CancelTradeResponse {

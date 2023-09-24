@@ -1,10 +1,12 @@
-//use cdrs_tokio::query_values;
+use cdrs_tokio::query_values;
 //use chrono::Utc;
 use tonic::{Request, Response, Status};
+use uuid::Uuid;
 
 use crate::api::auction::filters::{
     ItemBidPriceRangeFilter, ItemBuyoutPriceRangeFilter, ItemNameFilter,
 };
+use crate::core::error::Error;
 use crate::core::orm::filter::{CustomFilter, Filter, IntoCustomFilter, Operator};
 use crate::core::orm::query_builder::{QueryBuilder, QueryType};
 use crate::core::orm::session::CassandraSession;
@@ -93,7 +95,67 @@ impl Auction for AuctionServiceImpl {
     }
 
     async fn bid(&self, request: Request<BidRequest>) -> Result<Response<BidResponse>, Status> {
-        todo!()
+        request.validate()?;
+        let data = request.get_ref();
+        let trade_id = Uuid::parse_str(&data.id).expect("parse valid uuid from request");
+        let user_id = Uuid::parse_str(&data.user_id).expect("parse valid uuid from request");
+
+        let read_query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Select)
+            .columns(&TRADE_ALL_COLUMNS)
+            .limit(1)
+            .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+            .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
+            .allow_filtering(true)
+            .build();
+        let trade = read_query.get_instance::<Trade>(&self.db).await?;
+
+        if data.amount <= trade.bid_price() {
+            return Err(Status::from(Error::ValidationError {
+                field: "amount".to_string(),
+                message: "The bid can't be less that the current price.".to_string(),
+            }));
+        }
+
+        if data.amount >= trade.buyout_price() {
+            return Err(Status::from(Error::ValidationError {
+                field: "amount".to_string(),
+                message: "The bid can't be greater that the buyout price.".to_string(),
+            }));
+        }
+
+        let update_query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Update)
+            .columns(&["bid_price", "bought_by", "bought_by_username"])
+            .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+            .filter_by(Filter::new(
+                "item_id",
+                Operator::Eq,
+                Some(trade.item_id().into()),
+            ))
+            .filter_by(Filter::new(
+                "created_by",
+                Operator::Eq,
+                Some(trade.created_by().into()),
+            ))
+            .build();
+        let update_query_values = query_values!(
+            "bid_price" => data.amount,
+            "bought_by" => user_id,
+            "bought_by_username" => data.username.to_owned()
+        );
+        update_query
+            .update(&self.db, &update_query_values)
+            .await
+            .map_err(|_| {
+                Error::CassandraError(String::from(
+                    "The item expired or was bought by other player.",
+                ))
+            })?;
+
+        // TODO: Return currency to the latest bidder
+
+        Ok(Response::new(BidResponse {}))
     }
 
     async fn buyout(
@@ -111,71 +173,6 @@ impl Auction for AuctionServiceImpl {
     }
 }
 
-// #[put("/{id}/bid")]
-// async fn bid_trade(
-//     detail: web::Path<TradeDetail>,
-//     data: Json<TradeBid>,
-//     db: web::Data<CassandraSession>,
-// ) -> Result<HttpResponse, Error> {
-//     data.validate()?;
-//     let trade_id = detail.into_inner().id;
-//
-//     let read_query = QueryBuilder::new(&TRADE_TABLE)
-//         .query_type(QueryType::Select)
-//         .columns(&TRADE_ALL_COLUMNS)
-//         .limit(1)
-//         .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
-//         .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
-//         .allow_filtering(true)
-//         .build();
-//     let trade = read_query.get_instance::<Trade>(&db).await?;
-//
-//     if data.amount <= trade.bid_price() {
-//         return Err(Error::ValidationError {
-//             message: String::from("Validation error"),
-//             errors: json!({"amount": "The bid can't be less that the current price."}),
-//         });
-//     }
-//
-//     if data.amount >= trade.buyout_price() {
-//         return Err(Error::ValidationError {
-//             message: String::from("Validation error"),
-//             errors: json!({"amount": "The bid can't be greater that the buyout price."}),
-//         });
-//     }
-//
-//     let update_query = QueryBuilder::new(&TRADE_TABLE)
-//         .query_type(QueryType::Update)
-//         .columns(&["bid_price", "bought_by", "bought_by_username"])
-//         .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
-//         .filter_by(Filter::new(
-//             "item_id",
-//             Operator::Eq,
-//             Some(trade.item_id().into()),
-//         ))
-//         .filter_by(Filter::new(
-//             "created_by",
-//             Operator::Eq,
-//             Some(trade.created_by().into()),
-//         ))
-//         .build();
-//     let update_query_values = query_values!(
-//         "bid_price" => data.amount,
-//         "bought_by" => data.user_id,
-//         "bought_by_username" => data.username.to_owned()
-//     );
-//     update_query
-//         .update(&db, &update_query_values)
-//         .await
-//         .map_err(|_| Error::CassandraError {
-//             message: String::from("The item expired or was bought by other player."),
-//         })?;
-//
-//     // TODO: Return currency to the latest bidder
-//
-//     Ok(HttpResponse::Ok().finish())
-// }
-//
 // #[put("/{id}/buyout")]
 // async fn buyout_trade(
 //     detail: web::Path<TradeDetail>,

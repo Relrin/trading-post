@@ -46,11 +46,6 @@ pub struct Trade {
     is_deleted: bool,
 }
 
-#[derive(Debug)]
-pub struct TradeOperation {
-    price: i64, // #[validate(range(min = 1))]
-}
-
 impl Trade {
     pub fn item_id(&self) -> Uuid {
         self.item_id
