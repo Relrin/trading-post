@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::core::error::Error;
 use crate::core::validation::Validate;
-use crate::proto::{BidRequest, BuyoutRequest, BuyoutResponse, CreateTradeRequest};
+use crate::proto::{BidRequest, BuyoutRequest, CancelTradeRequest, CreateTradeRequest};
 
 impl Validate for Request<CreateTradeRequest> {
     fn validate(&self) -> Result<(), Error> {
@@ -127,6 +127,28 @@ impl Validate for Request<BuyoutRequest> {
             return Err(Error::ValidationError {
                 field: "amount".to_string(),
                 message: "The amount must be a positive value.".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+}
+
+impl Validate for Request<CancelTradeRequest> {
+    fn validate(&self) -> Result<(), Error> {
+        let data = self.get_ref();
+
+        if Uuid::try_parse(&data.id).is_err() {
+            return Err(Error::ValidationError {
+                field: "id".to_string(),
+                message: format!("{0} is not a valid UUID.", &data.id),
+            });
+        }
+
+        if Uuid::try_parse(&data.user_id).is_err() {
+            return Err(Error::ValidationError {
+                field: "user_id".to_string(),
+                message: format!("{0} is not a valid UUID.", &data.user_id),
             });
         }
 

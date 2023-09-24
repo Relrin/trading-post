@@ -205,6 +205,7 @@ impl Auction for AuctionServiceImpl {
             ))
             .build();
         let update_query_values = query_values!(
+            "bid_price" => data.amount,
             "bought_by" => user_id,
             "bought_by_username" => data.username.to_owned(),
             "is_deleted" => true,
@@ -229,71 +230,64 @@ impl Auction for AuctionServiceImpl {
         &self,
         request: Request<CancelTradeRequest>,
     ) -> Result<Response<CancelTradeResponse>, Status> {
-        todo!()
+        let data = request.get_ref();
+        let trade_id = Uuid::parse_str(&data.id).expect("parse valid uuid from request");
+        let user_id = Uuid::parse_str(&data.user_id).expect("parse valid uuid from request");
+
+        let read_query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Select)
+            .columns(&TRADE_ALL_COLUMNS)
+            .limit(1)
+            .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+            .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
+            .allow_filtering(true)
+            .build();
+        let trade = read_query.get_instance::<Trade>(&self.db).await?;
+
+        if trade.bought_by() != *EMPTY_UUID {
+            return Err(Status::from(Error::ValidationError {
+                field: "bought_by".to_string(),
+                message: "The trade can't be deleted when someone did a bid.".to_string(),
+            }));
+        }
+
+        if user_id != trade.created_by() {
+            return Err(Status::from(Error::ValidationError {
+                field: "user_id".to_string(),
+                message: "Only the owner can delete the trade.".to_string(),
+            }));
+        }
+
+        let delete_query = QueryBuilder::new(&TRADE_TABLE)
+            .query_type(QueryType::Update)
+            .columns(&["is_deleted"])
+            .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
+            .filter_by(Filter::new(
+                "item_id",
+                Operator::Eq,
+                Some(trade.item_id().into()),
+            ))
+            .filter_by(Filter::new(
+                "created_by",
+                Operator::Eq,
+                Some(trade.created_by().into()),
+            ))
+            .build();
+        let delete_query_values = query_values!(
+            "is_deleted" => true,
+            "expired_at" => Utc::now()
+        );
+        delete_query
+            .update(&self.db, &delete_query_values)
+            .await
+            .map_err(|_| {
+                Error::CassandraError(String::from(
+                    "The item expired or was bought by other player.",
+                ))
+            })?;
+
+        // TODO: Return an item to an inventory
+
+        Ok(Response::new(CancelTradeResponse {}))
     }
 }
-
-// }
-//
-// #[delete("/{id}")]
-// async fn delete_trade(
-//     detail: web::Path<TradeDetail>,
-//     data: Json<TradeDelete>,
-//     db: web::Data<CassandraSession>,
-// ) -> Result<HttpResponse, Error> {
-//     let trade_id = detail.into_inner().id;
-//
-//     let read_query = QueryBuilder::new(&TRADE_TABLE)
-//         .query_type(QueryType::Select)
-//         .columns(&TRADE_ALL_COLUMNS)
-//         .limit(1)
-//         .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
-//         .filter_by(Filter::new("is_deleted", Operator::Eq, Some(false.into())))
-//         .allow_filtering(true)
-//         .build();
-//     let trade = read_query.get_instance::<Trade>(&db).await?;
-//
-//     if trade.bought_by() != *EMPTY_UUID {
-//         return Err(Error::ValidationError {
-//             message: String::from("Validation error"),
-//             errors: json!({"amount": "The trade can't be deleted when someone did a bid."}),
-//         });
-//     }
-//
-//     if data.user_id != trade.created_by() {
-//         return Err(Error::ValidationError {
-//             message: String::from("Validation error"),
-//             errors: json!({"amount": "Only the owner can delete the trade."}),
-//         });
-//     }
-//
-//     let delete_query = QueryBuilder::new(&TRADE_TABLE)
-//         .query_type(QueryType::Update)
-//         .columns(&["is_deleted"])
-//         .filter_by(Filter::new("id", Operator::Eq, Some(trade_id.into())))
-//         .filter_by(Filter::new(
-//             "item_id",
-//             Operator::Eq,
-//             Some(trade.item_id().into()),
-//         ))
-//         .filter_by(Filter::new(
-//             "created_by",
-//             Operator::Eq,
-//             Some(trade.created_by().into()),
-//         ))
-//         .build();
-//     let delete_query_values = query_values!(
-//         "is_deleted" => true,
-//         "expired_at" => Utc::now()
-//     );
-//     delete_query
-//         .update(&db, &delete_query_values)
-//         .await
-//         .map_err(|_| Error::CassandraError {
-//             message: String::from("The trade was not found."),
-//         })?;
-//
-//     // TODO: Return an item to an inventory
-//
-//     Ok(HttpResponse::Ok().finish())
-// }
